@@ -4,10 +4,9 @@
   "description": "Backend Node.js untuk Dashboard Rekonsiliasi Dana BOSP Kabupaten Minahasa Tenggara",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js",
-    "init-db": "node scripts/init-db.js"
-  },
+  "start": "node scripts/init-db.js && node server.js",
+  "init-db": "node scripts/init-db.js"
+},
   "engines": {
     "node": ">=18"
   },
