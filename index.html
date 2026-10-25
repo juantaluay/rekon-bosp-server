@@ -1503,12 +1503,7 @@
                     }
                     if (payload) {
                         // Backend Code.gs: doPost → action=saveAll (Content-Type text/plain agar tidak kena preflight CORS)
-                        await fetch(GAS_WEB_APP_URL, {
-                            method: "POST",
-                            headers: { "Content-Type": "text/plain;charset=utf-8" },
-                            body: JSON.stringify(payload),
-                            redirect: "follow"
-                        });
+                        await gasPost(payload);
                     }
                 } catch (err) {
                     console.error("Gagal menyinkronkan data ke Google Sheets:", err);
@@ -1522,13 +1517,36 @@
             if (!isGasConfigured()) return false;
             try {
                 // Backend Code.gs: doGet tanpa action mengembalikan status + version
-                const r = await fetch(GAS_WEB_APP_URL, { method: "GET", redirect: "follow" });
+                const r = await fetch(GAS_WEB_APP_URL + "?action=ping&_=" + Date.now(), {
+                    method: "GET",
+                    redirect: "follow",
+                    cache: "no-store"
+                });
                 const j = await r.json();
                 gasReady = !!(j && (j.version || j.status === "success"));
             } catch (e) {
+                console.warn("ensureServerReady gagal:", e);
                 gasReady = false;
             }
             return gasReady;
+        }
+
+        // POST ke Google Apps Script (hindari preflight CORS; ikuti redirect)
+        async function gasPost(payload) {
+            if (!isGasConfigured()) throw new Error("URL Google Apps Script belum dikonfigurasi.");
+            const resp = await fetch(GAS_WEB_APP_URL, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify(payload),
+                redirect: "follow",
+                cache: "no-store"
+            });
+            const text = await resp.text();
+            let json;
+            try { json = JSON.parse(text); } catch (e) {
+                throw new Error("Respons server bukan JSON. Status HTTP " + resp.status + ". Cuplikan: " + String(text).slice(0, 180));
+            }
+            return json;
         }
 
         function fileToBase64(file) {
@@ -1549,6 +1567,7 @@
                 document.getElementById("landingPage").classList.add("hidden");
                 document.getElementById("mainAppContainer").classList.remove("hidden");
                 initAppDashboard();
+                startIdleWatch();
             } else {
                 document.getElementById("landingPage").classList.remove("hidden");
                 document.getElementById("mainAppContainer").classList.add("hidden");
@@ -1637,13 +1656,83 @@
             document.getElementById("authModal").classList.add("hidden");
         }
 
-        function handleLogout() {
-            if (confirm("Apakah Anda yakin ingin keluar (logout) dari sesi ini?")) {
-                currentUser = null;
-                saveToLocalStorage();
-                document.getElementById("mainAppContainer").classList.add("hidden");
-                document.getElementById("landingPage").classList.remove("hidden");
+        function handleLogout(options) {
+            const opts = options || {};
+            const silent = !!opts.silent;
+            const reason = opts.reason || "";
+            if (!silent && !confirm("Apakah Anda yakin ingin keluar (logout) dari sesi ini?")) {
+                return;
             }
+            // Simpan data terakhir sebelum keluar
+            try { saveToLocalStorage(); } catch (e) { console.warn(e); }
+            stopIdleWatch();
+            currentUser = null;
+            try { localStorage.setItem("bosp_currentUser", JSON.stringify(null)); } catch (e) {}
+            document.getElementById("mainAppContainer").classList.add("hidden");
+            document.getElementById("landingPage").classList.remove("hidden");
+            // Tutup modal yang mungkin masih terbuka
+            ["authModal", "inputModal", "detailModal", "sp2bModal", "masterModal", "userListModal",
+             "changePasswordModal", "kecamatanModal", "sp2bAnnualModal", "schoolDashboardModal", "sp2bKabModal"
+            ].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.add("hidden");
+            });
+            if (silent && reason) {
+                alert(reason);
+            }
+        }
+
+        // ========== Auto Logout setelah 10 menit tidak aktif ==========
+        const IDLE_TIMEOUT_MS = 10 * 60 * 1000; // 10 menit
+        const IDLE_CHECK_EVERY_MS = 30 * 1000;  // cek tiap 30 detik
+        let idleLastActivity = Date.now();
+        let idleTimerId = null;
+        let idleWatching = false;
+
+        function markUserActivity() {
+            idleLastActivity = Date.now();
+        }
+
+        function stopIdleWatch() {
+            idleWatching = false;
+            if (idleTimerId) {
+                clearInterval(idleTimerId);
+                idleTimerId = null;
+            }
+        }
+
+        function startIdleWatch() {
+            if (idleWatching) {
+                markUserActivity();
+                return;
+            }
+            idleWatching = true;
+            markUserActivity();
+            const events = ["mousemove", "mousedown", "keydown", "touchstart", "scroll", "click", "input", "change"];
+            events.forEach(ev => {
+                // once registered globally; markUserActivity is cheap
+                document.addEventListener(ev, markUserActivity, { passive: true, capture: true });
+            });
+            window.addEventListener("focus", markUserActivity);
+            idleTimerId = setInterval(async () => {
+                if (!currentUser) {
+                    stopIdleWatch();
+                    return;
+                }
+                const idleFor = Date.now() - idleLastActivity;
+                if (idleFor >= IDLE_TIMEOUT_MS) {
+                    try {
+                        // Simpan data terakhir ke localStorage + Google Sheets
+                        await saveToLocalStorage();
+                    } catch (e) {
+                        console.warn("Gagal menyimpan data saat auto-logout:", e);
+                    }
+                    handleLogout({
+                        silent: true,
+                        reason: "Sesi berakhir karena tidak ada aktivitas selama 10 menit.\nData terakhir Anda telah disimpan."
+                    });
+                }
+            }, IDLE_CHECK_EVERY_MS);
         }
 
         function toggleAdminMenu() {
@@ -1756,6 +1845,7 @@
                 document.getElementById("landingPage").classList.add("hidden");
                 document.getElementById("mainAppContainer").classList.remove("hidden");
                 initAppDashboard();
+                startIdleWatch();
                 alert("Selamat datang kembali, " + found.name + "!\nTahun Anggaran aktif: " + activeYear);
             } else {
                 alert("Username atau kata sandi salah, atau akun belum terdaftar!");
@@ -2715,27 +2805,20 @@
                     if(loader) loader.classList.remove("hidden");
                     const file = fileInput.files[0];
                     try {
-                        if (!(await ensureServerReady())) {
-                            throw new Error("Apps Script di server masih versi lama.");
-                        }
+                        // Coba cek server, tapi jangan blokir upload jika gagal (bisa karena cache/CDN)
+                        try { await ensureServerReady(); } catch (e) {}
                         const base64Data = await fileToBase64(file);
                         const schoolObj = baseSchools.find(x => Number(x.no) === Number(schoolNo)) || {};
-                        const resp = await fetch(GAS_WEB_APP_URL, {
-                            method: "POST",
-                            headers: { "Content-Type": "text/plain;charset=utf-8" },
-                            body: JSON.stringify({
-                                action: "uploadFile",
-                                schoolNo: schoolNo,
-                                schoolName: schoolObj.name || "",
-                                npsn: schoolObj.npsn || "",
-                                month: month,
-                                docType: doc.key,
-                                fileName: file.name,
-                                fileData: base64Data
-                            }),
-                            redirect: "follow"
+                        const uploadResult = await gasPost({
+                            action: "uploadFile",
+                            schoolNo: schoolNo,
+                            schoolName: schoolObj.name || "",
+                            npsn: schoolObj.npsn || "",
+                            month: month,
+                            docType: doc.key,
+                            fileName: file.name,
+                            fileData: base64Data
                         });
-                        const uploadResult = await resp.json();
                         if (uploadResult.status !== "success" || !uploadResult.fileUrl) {
                             throw new Error(uploadResult.message || "Respon server tidak valid");
                         }
