@@ -267,6 +267,9 @@
                             <button onclick="openSP2BKabModal(); closeAdminMenu();" class="w-full text-left px-4 py-2 hover:bg-slate-100 flex items-center space-x-2 font-medium">
                                 <i class="fa-solid fa-print text-emerald-600 w-4"></i> <span>Cetak SP2B Kabupaten (Akumulasi)</span>
                             </button>
+                            <button onclick="openRankModal(); closeAdminMenu();" class="w-full text-left px-4 py-2 hover:bg-slate-100 flex items-center space-x-2 font-medium">
+                                <i class="fa-solid fa-ranking-star text-orange-500 w-4"></i> <span>Urutan Kecepatan Rekonsiliasi</span>
+                            </button>
                             <button onclick="openAnnualSP2BModal(); closeAdminMenu();" class="w-full text-left px-4 py-2 hover:bg-slate-100 flex items-center space-x-2 font-medium">
                                 <i class="fa-solid fa-file-invoice-dollar text-indigo-600 w-4"></i> <span>Rekap SP2B 1 Tahun</span>
                             </button>
@@ -307,6 +310,7 @@
                     <select id="periodTypeSelect" onchange="changePeriodType(this.value)" class="px-3 py-1.5 text-xs font-bold border border-slate-300 rounded-lg bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0F2C59]">
                         <option value="bulan">Per Bulan</option>
                         <option value="triwulan">Per Triwulan</option>
+                        <option value="semester">Per Semester</option>
                         <option value="tahun">Per Tahun (Kumulatif)</option>
                     </select>
                     <div id="periodSelectorContainer" class="flex flex-wrap gap-1"></div>
@@ -586,7 +590,8 @@
                 <h3 id="inputModalTitle" class="text-base font-bold"><i class="fa-solid fa-pen-to-square mr-2"></i> Input Realisasi Bulanan & Unggah Dokumen PDF</h3>
                 <button onclick="closeInputModal()" class="text-white hover:text-slate-300 text-xl font-bold">&times;</button>
             </div>
-            <div class="p-6 space-y-4 text-xs overflow-y-auto">
+            <div id="inputModalBody" class="p-6 space-y-4 text-xs overflow-y-auto">
+                <div id="inputLockBanner" class="hidden p-3 rounded-xl border text-xs"></div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">Satuan Pendidikan</label>
@@ -797,8 +802,52 @@
 
             </div>
             <div class="bg-slate-100 px-6 py-3 flex justify-end space-x-2 border-t border-slate-200">
-                <button onclick="saveRealizationData()" class="bg-[#0F2C59] hover:bg-blue-900 text-white text-xs font-semibold px-4 py-2 rounded-lg transition">Simpan & Ajukan Realisasi</button>
+                <button id="btnSaveRealisasi" onclick="saveRealizationData()" class="bg-[#0F2C59] hover:bg-blue-900 text-white text-xs font-semibold px-4 py-2 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Simpan & Ajukan Realisasi</button>
                 <button onclick="closeInputModal()" class="bg-slate-600 hover:bg-slate-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition">Batal</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal Urutan Kecepatan Rekonsiliasi (Admin Dinas) -->
+    <div id="rankModal" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full overflow-hidden max-h-[90vh] flex flex-col">
+            <div class="bg-[#0F2C59] text-white px-6 py-4 flex justify-between items-center">
+                <h3 class="text-base font-bold"><i class="fa-solid fa-ranking-star mr-2"></i> Urutan Kecepatan Rekonsiliasi Sekolah</h3>
+                <button onclick="closeRankModal()" class="text-white hover:text-slate-300 text-xl font-bold">&times;</button>
+            </div>
+            <div class="p-5 space-y-4 text-xs overflow-y-auto">
+                <div class="flex flex-wrap items-end gap-3">
+                    <label class="block"><span class="font-semibold text-slate-700">Bulan Rekonsiliasi</span>
+                        <select id="rankMonth" onchange="renderRankModal()" class="block mt-1 px-3 py-2 border border-slate-300 rounded-lg"></select></label>
+                    <label class="block"><span class="font-semibold text-slate-700">Urutkan</span>
+                        <select id="rankOrder" onchange="renderRankModal()" class="block mt-1 px-3 py-2 border border-slate-300 rounded-lg">
+                            <option value="cepat">Tercepat → Terlama</option>
+                            <option value="lama">Terlama → Tercepat</option>
+                        </select></label>
+                    <label class="block"><span class="font-semibold text-slate-700">Kecamatan</span>
+                        <select id="rankKec" onchange="renderRankModal()" class="block mt-1 px-3 py-2 border border-slate-300 rounded-lg"></select></label>
+                </div>
+                <p class="text-[11px] text-slate-500">Urutan berdasarkan waktu Admin Dinas mencentang <b>"Selesai"</b> pada ceklist rekonsiliasi. "Lama" dihitung dari akhir bulan yang direkonsiliasi. Menghapus centang akan menghapus waktu selesai.</p>
+                <div id="rankSummary" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
+                <div class="overflow-x-auto border border-slate-200 rounded-lg">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-600 uppercase tracking-wider border-b border-slate-200 font-semibold">
+                                <th class="py-2 px-3 text-center">Peringkat</th>
+                                <th class="py-2 px-3">Nama Sekolah</th>
+                                <th class="py-2 px-3">Kecamatan</th>
+                                <th class="py-2 px-3">Waktu Ceklist Selesai</th>
+                                <th class="py-2 px-3">Lama dari Akhir Bulan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rankTableBody" class="divide-y divide-slate-200 text-slate-700"></tbody>
+                    </table>
+                </div>
+                <div id="rankPending"></div>
+            </div>
+            <div class="bg-slate-100 px-6 py-3 flex justify-end border-t border-slate-200">
+                <button onclick="closeRankModal()" class="bg-slate-600 hover:bg-slate-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition">Tutup</button>
             </div>
         </div>
     </div>
@@ -854,12 +903,13 @@
                     <div class="flex items-center space-x-2">
                         <span id="modalVerifStatusBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Draft</span>
                         <div id="adminVerificationControls" class="space-x-1">
-                            <button onclick="updateVerificationStatus('Draft')" class="bg-slate-500 hover:bg-slate-600 text-white px-2.5 py-1 rounded text-[10px]" title="Kembalikan status menjadi Draft">Jadikan Draft</button>
+                            <button onclick="updateVerificationStatus('Draft')" class="bg-slate-500 hover:bg-slate-600 text-white px-2.5 py-1 rounded text-[10px]" title="Kembalikan status menjadi Draft & buka kunci input sekolah"><i class="fa-solid fa-lock-open mr-1"></i>Jadikan Draft (Buka Kunci)</button>
                             <button onclick="updateVerificationStatus('Diverifikasi Dinas')" class="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 rounded text-[10px]">Verifikasi Dinas</button>
                             <button onclick="updateVerificationStatus('Disahkan BUD')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded text-[10px]">Sahkan BUD</button>
                         </div>
                     </div>
                 </div>
+                <div id="modalLockNotice" class="hidden bg-blue-50 border border-blue-200 text-blue-900 p-3 rounded-xl text-xs"></div>
             </div>
             <div class="bg-slate-100 px-6 py-3 flex justify-between items-center">
                 <button id="detailCetakSP2BBtn" onclick="openSP2BModalFromDetail()" class="bg-[#0F2C59] hover:bg-blue-900 text-white text-xs font-semibold px-4 py-2 rounded-lg transition flex items-center space-x-1.5 hidden">
@@ -1275,9 +1325,10 @@
         const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agus", "Sep", "Okt", "Nov", "Des"];
         const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
         
-        let periodType = "bulan"; // "bulan", "triwulan", "tahun"
+        let periodType = "bulan"; // "bulan", "triwulan", "semester", "tahun"
         let currentMonth = "Jan";
         let currentTriwulan = "TW1"; // TW1 (Jan-Mar), TW2 (Apr-Jun), TW3 (Jul-Sep), TW4 (Okt-Des)
+        let currentSemester = "S1"; // S1 (Jan-Jun), S2 (Jul-Des)
 
         let defaultBaseSchools = [
             { no: 1, npsn: "69762652", name: "SDN 1 RATAHAN", alamat: "Ratahan", status: "NEGERI", kecamatan: "RATAHAN", jenjang: "SD" },
@@ -1533,6 +1584,10 @@
         // POST ke Google Apps Script (hindari preflight CORS; ikuti redirect)
         async function gasPost(payload) {
             if (!isGasConfigured()) throw new Error("URL Google Apps Script belum dikonfigurasi.");
+            // Identitas pemohon agar server dapat menegakkan kunci verifikasi & hak Admin
+            if (payload && typeof payload === "object" && !payload.auth && currentUser) {
+                payload.auth = { username: currentUser.username, password: currentUser.password };
+            }
             const resp = await fetch(GAS_WEB_APP_URL, {
                 method: "POST",
                 headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -2254,6 +2309,45 @@
             return ["Jan", "Feb", "Mar"];
         }
 
+        function getSemesterMonths(sm) {
+            return sm === "S2" ? ["Jul", "Agus", "Sep", "Okt", "Nov", "Des"] : ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun"];
+        }
+
+        // Daftar bulan pada periode laporan yang sedang aktif di dashboard
+        function getPeriodMonths() {
+            if (periodType === "bulan") return [currentMonth];
+            if (periodType === "triwulan") return getTriwulanMonths(currentTriwulan);
+            if (periodType === "semester") return getSemesterMonths(currentSemester);
+            return months.slice();
+        }
+
+        // Bulan acuan periode (bulan terakhir) untuk status verifikasi, ceklist rekonsiliasi & dokumen
+        function refMonth() {
+            const l = getPeriodMonths();
+            return l[l.length - 1];
+        }
+
+        function periodLabel(kumulatif) {
+            if (periodType === "bulan") return monthNames[months.indexOf(currentMonth)];
+            if (periodType === "triwulan") return currentTriwulan;
+            if (periodType === "semester") return currentSemester === "S2" ? "Semester II" : "Semester I";
+            return `Tahun ${activeYear}` + (kumulatif ? " (Kumulatif)" : "");
+        }
+
+        function periodCode() {
+            if (periodType === "bulan") return currentMonth;
+            if (periodType === "triwulan") return currentTriwulan;
+            if (periodType === "semester") return currentSemester;
+            return "TAHUN";
+        }
+
+        // ---------- KUNCI INPUT SETELAH DIVERIFIKASI DINAS ----------
+        const LOCKED_STATUSES = ["Diverifikasi Dinas", "Disahkan BUD"];
+        function isMonthLocked(no, m) {
+            const d = monthlyData[no] && monthlyData[no][m];
+            return !!(d && LOCKED_STATUSES.indexOf(d.verifStatus) !== -1);
+        }
+
         // =====================================================================
         // KERTAS KERJA REKONSILIASI (kolom SA_BANK BOSREG s.d. SALDO RC BANK)
         // Rumus mengikuti Kertas_Kerja_Rekon (lembar Jun-Okt, kolom SA_TUNAI disertakan).
@@ -2442,6 +2536,23 @@
                     container.appendChild(btn);
                 });
                 document.getElementById("kpiMonthLabel").textContent = `Realisasi ${currentTriwulan} ${activeYear}`;
+            } else if (periodType === "semester") {
+                const sms = [
+                    { id: "S1", name: "Semester I (Jan - Jun)" },
+                    { id: "S2", name: "Semester II (Jul - Des)" }
+                ];
+                sms.forEach(sm => {
+                    const btn = document.createElement("button");
+                    btn.className = `px-3 py-1.5 rounded-lg text-xs font-bold transition ${currentSemester === sm.id ? 'bg-[#0F2C59] text-white shadow' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`;
+                    btn.textContent = sm.name;
+                    btn.onclick = () => {
+                        currentSemester = sm.id;
+                        renderPeriodSelector();
+                        updateActiveMonthData();
+                    };
+                    container.appendChild(btn);
+                });
+                document.getElementById("kpiMonthLabel").textContent = `Realisasi ${currentSemester === "S2" ? "Semester II" : "Semester I"} ${activeYear}`;
             } else {
                 const badge = document.createElement("span");
                 badge.className = "px-3 py-1.5 bg-blue-100 text-blue-900 font-bold rounded-lg text-xs";
@@ -2483,8 +2594,8 @@
                         status = mData.verifStatus;
                         rekon = mData.reconDone;
                     }
-                } else if (periodType === "triwulan") {
-                    const mList = getTriwulanMonths(currentTriwulan);
+                } else if (periodType === "triwulan" || periodType === "semester") {
+                    const mList = getPeriodMonths();
                     const firstM = mList[0];
                     const lastM = mList[mList.length - 1];
                     
@@ -2668,6 +2779,45 @@
             setDocStatusLabel("linkBukuPajak", docs.bukuPajak);
             setDocStatusLabel("linkSPTJM", docs.sptjm);
             recalcInputForm();
+            applyInputLock();
+        }
+
+        // Tandai bulan terverifikasi pada pilihan bulan, kunci form bagi operator sekolah
+        function applyInputLock() {
+            const schoolNo = document.getElementById("inputSchoolSelect").value;
+            const monthSel = document.getElementById("inputMonthSelect");
+            const month = monthSel.value;
+            Array.prototype.forEach.call(monthSel.options, (opt, idx) => {
+                opt.textContent = monthNames[idx] + (isMonthLocked(schoolNo, opt.value) ? " 🔒 (Terverifikasi)" : "");
+            });
+
+            const locked = isMonthLocked(schoolNo, month);
+            const isOperator = !!(currentUser && currentUser.role === "Operator Sekolah");
+            const lockForm = locked && isOperator;
+            const body = document.getElementById("inputModalBody");
+            const banner = document.getElementById("inputLockBanner");
+            const saveBtn = document.getElementById("btnSaveRealisasi");
+
+            body.querySelectorAll("input, select, textarea").forEach(el => {
+                if (el.id === "inputSchoolSelect" || el.id === "inputMonthSelect") return;
+                if (lockForm) {
+                    if (!el.disabled) { el.disabled = true; el.setAttribute("data-verif-locked", "1"); }
+                } else if (el.getAttribute("data-verif-locked") === "1") {
+                    el.disabled = false; el.removeAttribute("data-verif-locked");
+                }
+            });
+            if (saveBtn) saveBtn.disabled = lockForm;
+
+            if (locked) {
+                const st = (monthlyData[schoolNo][month] || {}).verifStatus;
+                banner.className = "p-3 rounded-xl border text-xs " + (lockForm ? "bg-rose-50 border-rose-200 text-rose-800" : "bg-blue-50 border-blue-200 text-blue-900");
+                banner.innerHTML = lockForm
+                    ? `<i class="fa-solid fa-lock mr-1"></i><b>Bulan ${monthNames[months.indexOf(month)]} sudah berstatus "${st}".</b> Data tidak dapat diubah lagi. Hubungi Admin Dinas bila perlu perbaikan (Admin dapat mengembalikan status ke Draft untuk membuka kunci).`
+                    : `<i class="fa-solid fa-lock mr-1"></i>Bulan ${monthNames[months.indexOf(month)]} sudah berstatus "${st}". Sekolah tidak dapat menginput, namun Admin Dinas masih dapat mengubah data.`;
+                banner.classList.remove("hidden");
+            } else {
+                banner.classList.add("hidden");
+            }
         }
 
         function setSaldoAwalEditable(editable) {
@@ -2755,6 +2905,16 @@
             await loadFromGoogleSheets();
             const schoolNo = document.getElementById("inputSchoolSelect").value;
             const month = document.getElementById("inputMonthSelect").value;
+
+            // Penjaga terakhir (setelah data terbaru dimuat): bulan terverifikasi tidak boleh diinput lagi
+            if (isMonthLocked(schoolNo, month)) {
+                if (currentUser && currentUser.role === "Operator Sekolah") {
+                    alert(`Bulan ${monthNames[months.indexOf(month)]} sudah diverifikasi Dinas dan terkunci. Anda tidak dapat lagi menginput atau mengunggah berkas untuk bulan ini.`);
+                    loadSchoolMonthIntoForm();
+                    return;
+                }
+                if (!confirm(`Bulan ${monthNames[months.indexOf(month)]} sudah berstatus "${monthlyData[schoolNo][month].verifStatus}". Tetap simpan perubahan sebagai Admin Dinas?`)) return;
+            }
             const initialVerif = currentUser && currentUser.role === "Operator Sekolah" ? "Diajukan Sekolah" : (monthlyData[schoolNo]?.[month]?.verifStatus || "Draft");
 
             if (!monthlyData[schoolNo]) monthlyData[schoolNo] = {};
@@ -2869,21 +3029,22 @@
         }
 
         function isReconDone(no, m) {
-            const d = monthlyData[no] && monthlyData[no][m || currentMonth];
+            const d = monthlyData[no] && monthlyData[no][m || refMonth()];
             return !!(d && d.reconDone);
         }
 
         function toggleReconDone(no, done) {
             if (!currentUser || currentUser.role !== "Admin Dinas") { alert("Akses ditolak! Hanya Admin Dinas yang dapat menandai selesai."); return; }
             if (!monthlyData[no]) monthlyData[no] = {};
-            if (!monthlyData[no][currentMonth]) {
-                monthlyData[no][currentMonth] = {
+            const rm = refMonth();
+            if (!monthlyData[no][rm]) {
+                monthlyData[no][rm] = {
                     pendapatan: { reguler: 0, kinerja: 0, jagirMasuk: 0, setoranTunai: 0, lebihTransferMasuk: 0 },
                     belanja: { pegawai: 0, barjasReg: 0, barjasKin: 0, pm: 0, pmKin: 0, atl: 0, atlKin: 0, jagirKeluar: 0, lebihTransferKeluar: 0 },
                     documents: {}, verifStatus: "Draft"
                 };
             }
-            const md = monthlyData[no][currentMonth];
+            const md = monthlyData[no][rm];
             if (done) {
                 const n = countDocsNeedFix(md.documents);
                 if (n > 0 && !confirm(`Masih ada ${n} dokumen "Perlu perbaikan". Tetap tandai sekolah ini selesai rekonsiliasi?`)) { renderTable(); return; }
@@ -2900,12 +3061,104 @@
             renderTable();
         }
 
+
+        // ---------- URUTAN KECEPATAN REKONSILIASI (berdasarkan ceklist "Selesai") ----------
+        function openRankModal() {
+            if (!currentUser || currentUser.role !== "Admin Dinas") {
+                alert("Akses ditolak! Fitur ini khusus untuk Admin Dinas.");
+                return;
+            }
+            const mSel = document.getElementById("rankMonth");
+            mSel.innerHTML = "";
+            months.forEach((m, i) => {
+                const o = document.createElement("option");
+                o.value = m; o.textContent = monthNames[i] + " " + activeYear;
+                mSel.appendChild(o);
+            });
+            mSel.value = refMonth();
+            const kSel = document.getElementById("rankKec");
+            kSel.innerHTML = '<option value="">Semua Kecamatan</option>';
+            [...new Set(baseSchools.map(s => s.kecamatan))].sort().forEach(k => {
+                const o = document.createElement("option");
+                o.value = k; o.textContent = k;
+                kSel.appendChild(o);
+            });
+            renderRankModal();
+            document.getElementById("rankModal").classList.remove("hidden");
+        }
+
+        function closeRankModal() {
+            document.getElementById("rankModal").classList.add("hidden");
+        }
+
+        function fmtDurasiRekon(ms) {
+            const hari = ms / 86400000;
+            if (hari <= 0) return "Sebelum/tepat akhir bulan";
+            if (hari < 1) return Math.max(1, Math.round(ms / 3600000)) + " jam setelah akhir bulan";
+            return Math.floor(hari) + " hari setelah akhir bulan";
+        }
+
+        function renderRankModal() {
+            const m = document.getElementById("rankMonth").value;
+            const order = document.getElementById("rankOrder").value;
+            const kec = document.getElementById("rankKec").value;
+            const mIdx = months.indexOf(m);
+            const endOfMonth = new Date(activeYear, mIdx + 1, 0, 23, 59, 59, 999).getTime();
+
+            const list = baseSchools.filter(s => !kec || s.kecamatan === kec);
+            const done = [], noTime = [], pending = [];
+            list.forEach(s => {
+                const d = monthlyData[s.no] && monthlyData[s.no][m];
+                if (d && d.reconDone) {
+                    const t = d.reconDoneAt ? new Date(d.reconDoneAt).getTime() : NaN;
+                    if (isFinite(t)) done.push({ s: s, t: t }); else noTime.push({ s: s });
+                } else {
+                    pending.push(s);
+                }
+            });
+            done.sort((a, b) => order === "cepat" ? a.t - b.t : b.t - a.t);
+
+            const tile = (label, val, cls) => `<div class="rounded-lg p-3 ${cls}"><div class="text-base font-bold leading-tight">${val}</div><div class="text-[10px] uppercase font-semibold tracking-wide mt-0.5">${label}</div></div>`;
+            const fastest = done.length ? done.reduce((a, b) => a.t <= b.t ? a : b) : null;
+            const slowest = done.length ? done.reduce((a, b) => a.t >= b.t ? a : b) : null;
+            const avg = done.length ? done.reduce((a, b) => a + (b.t - endOfMonth), 0) / done.length : null;
+            document.getElementById("rankSummary").innerHTML =
+                tile("Sekolah selesai", `${done.length + noTime.length} / ${list.length}`, "bg-emerald-100 text-emerald-800") +
+                tile("Tercepat", fastest ? escHtml(fastest.s.name) : "-", "bg-blue-100 text-blue-800") +
+                tile("Terlama", slowest ? escHtml(slowest.s.name) : "-", "bg-amber-100 text-amber-800") +
+                tile("Rata-rata lama", avg === null ? "-" : fmtDurasiRekon(avg), "bg-slate-100 text-slate-700");
+
+            const fmtTgl = t => new Date(t).toLocaleString("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+            const medal = i => i === 0 ? '<i class="fa-solid fa-medal text-yellow-500"></i> ' : (i === 1 ? '<i class="fa-solid fa-medal text-slate-400"></i> ' : (i === 2 ? '<i class="fa-solid fa-medal text-amber-700"></i> ' : ""));
+            const rows = [];
+            done.forEach((r, i) => {
+                const fastRank = order === "cepat" ? i : done.length - 1 - i; // peringkat kecepatan sebenarnya (0 = tercepat)
+                rows.push(`<tr class="hover:bg-slate-50">
+                    <td class="py-2 px-3 text-center font-bold">${medal(fastRank)}${fastRank + 1}</td>
+                    <td class="py-2 px-3 font-semibold text-slate-900">${escHtml(r.s.name)}</td>
+                    <td class="py-2 px-3">${escHtml(r.s.kecamatan)}</td>
+                    <td class="py-2 px-3 font-mono">${fmtTgl(r.t)}</td>
+                    <td class="py-2 px-3">${fmtDurasiRekon(r.t - endOfMonth)}</td></tr>`);
+            });
+            noTime.forEach(r => {
+                rows.push(`<tr class="bg-slate-50 text-slate-500"><td class="py-2 px-3 text-center">-</td>
+                    <td class="py-2 px-3 font-semibold">${escHtml(r.s.name)}</td><td class="py-2 px-3">${escHtml(r.s.kecamatan)}</td>
+                    <td class="py-2 px-3 italic" colspan="2">Selesai, waktu tidak tercatat (dicentang sebelum fitur ini). Hapus lalu centang ulang untuk mencatat waktu.</td></tr>`);
+            });
+            document.getElementById("rankTableBody").innerHTML = rows.length ? rows.join("") :
+                `<tr><td colspan="5" class="text-center py-6 text-slate-400">Belum ada sekolah yang dicentang selesai untuk ${monthNames[mIdx]} ${activeYear}.</td></tr>`;
+
+            document.getElementById("rankPending").innerHTML = pending.length
+                ? `<div class="bg-rose-50 border border-rose-200 rounded-lg p-3"><p class="font-bold text-rose-800 mb-1"><i class="fa-solid fa-hourglass-half mr-1"></i>Belum selesai (${pending.length} sekolah)</p><p class="text-slate-700">${pending.map(s => escHtml(s.name)).join(", ")}</p></div>`
+                : "";
+        }
+
         function renderProgressPanel() {
             const el = document.getElementById("progressPanel");
             if (!el || !currentUser) return;
-            const pLabel = periodType === 'bulan' ? monthNames[months.indexOf(currentMonth)] : (periodType === 'triwulan' ? currentTriwulan : `Tahun ${activeYear}`);
-            const verifOf = (no, m) => (monthlyData[no] && monthlyData[no][m || currentMonth] && monthlyData[no][m || currentMonth].verifStatus) || "Draft";
-            const fixOf = (no, m) => countDocsNeedFix(monthlyData[no] && monthlyData[no][m || currentMonth] && monthlyData[no][m || currentMonth].documents) > 0;
+            const pLabel = periodLabel();
+            const verifOf = (no, m) => (monthlyData[no] && monthlyData[no][m || refMonth()] && monthlyData[no][m || refMonth()].verifStatus) || "Draft";
+            const fixOf = (no, m) => countDocsNeedFix(monthlyData[no] && monthlyData[no][m || refMonth()] && monthlyData[no][m || refMonth()].documents) > 0;
             const bar = (pct, color) => `<div class="w-full bg-slate-200 rounded-full h-2.5"><div class="${color} h-2.5 rounded-full transition-all" style="width:${pct}%"></div></div>`;
             const tile = (label, n, cls) => `<div class="rounded-lg p-3 ${cls}"><div class="text-xl font-bold">${n}</div><div class="text-[10px] uppercase font-semibold tracking-wide">${label}</div></div>`;
 
@@ -2925,6 +3178,7 @@
                 el.innerHTML = `
                     <div class="flex flex-wrap justify-between items-end gap-2 mb-2">
                         <h3 class="font-bold text-slate-800 text-sm"><i class="fa-solid fa-list-check mr-2 text-blue-700"></i>Progress Rekonsiliasi Sekolah — ${pLabel}</h3>
+                        <button onclick="openRankModal()" class="bg-orange-500 hover:bg-orange-600 text-white text-[11px] font-semibold px-3 py-1.5 rounded-lg shadow"><i class="fa-solid fa-ranking-star mr-1"></i>Urutan Tercepat &amp; Terlama</button>
                         <span class="text-xs text-slate-600"><b class="text-lg text-slate-900">${done}</b> dari ${total} sekolah selesai (${pct}%)</span>
                     </div>
                     ${bar(pct, "bg-emerald-500")}
@@ -2951,7 +3205,7 @@
                     const warn = fixOf(s.no, m) ? '<i class="fa-solid fa-triangle-exclamation text-rose-600 ml-1"></i>' : "";
                     return `<div class="rounded-lg p-2 text-center ${cls}${ring}"><div class="text-[11px] font-bold">${m}${warn}</div><div class="text-[9px] uppercase">${st}</div></div>`;
                 }).join("");
-                const docs = (monthlyData[s.no] && monthlyData[s.no][currentMonth] && monthlyData[s.no][currentMonth].documents) || {};
+                const docs = (monthlyData[s.no] && monthlyData[s.no][refMonth()] && monthlyData[s.no][refMonth()].documents) || {};
                 const up = DOC_LABELS.filter(d => docs[d.key] && docs[d.key].url).length;
                 el.innerHTML = `
                     <div class="flex flex-wrap justify-between items-end gap-2 mb-2">
@@ -3064,6 +3318,7 @@
                     <td class="py-3 px-4 text-right font-mono font-bold">${formatRupiah(s.kasSeharusnya)}</td>
                     <td class="py-3 px-4 text-center">
                         <span class="px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${badgeColor}">${s.verifStatus}</span>
+                        ${LOCKED_STATUSES.indexOf(s.verifStatus) !== -1 ? `<div class="mt-1"><span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-200 text-slate-700" title="Sekolah tidak dapat lagi menginput pada periode ini"><i class="fa-solid fa-lock mr-1"></i>Input Terkunci</span></div>` : ''}
                         ${isReconDone(s.no) ? `<div class="mt-1"><span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700"><i class="fa-solid fa-circle-check mr-1"></i>Selesai Rekonsiliasi</span></div>` : ''}
                         ${countDocsNeedFix(s.documents) > 0 ? `<div class="mt-1"><span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-100 text-rose-700" title="Dokumen perlu perbaikan"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Perbaikan (${countDocsNeedFix(s.documents)})</span></div>` : ''}
                     </td>
@@ -3103,7 +3358,7 @@
             document.getElementById("modalBelanja").textContent = formatRupiah(s.totalBelanja);
             document.getElementById("modalKasSeharusnya").textContent = formatRupiah(s.kasSeharusnya);
             
-            let pLabel = periodType === 'bulan' ? monthNames[months.indexOf(currentMonth)] : (periodType === 'triwulan' ? currentTriwulan : `Tahun ${activeYear} (Kumulatif)`);
+            let pLabel = periodLabel(true);
             document.getElementById("modalMonthName").textContent = pLabel;
 
             let badgeColor = "bg-slate-100 text-slate-700";
@@ -3148,6 +3403,18 @@
             `;
 
             renderDocChecklist(s.no, s.documents || {});
+
+            const lockEl = document.getElementById("modalLockNotice");
+            if (lockEl) {
+                const lockedMs = getPeriodMonths().filter(m => isMonthLocked(s.no, m));
+                if (lockedMs.length) {
+                    const names = lockedMs.map(m => monthNames[months.indexOf(m)]).join(", ");
+                    lockEl.innerHTML = `<i class="fa-solid fa-lock mr-1"></i><b>Input sekolah terkunci</b> untuk bulan: ${names}. Bulan ini sudah diverifikasi Dinas, sehingga operator sekolah tidak dapat lagi menginput atau mengunggah berkas.` + (currentUser && currentUser.role === "Admin Dinas" ? ` Untuk membuka kunci, ubah status menjadi <b>Draft</b>.` : "");
+                    lockEl.classList.remove("hidden");
+                } else {
+                    lockEl.classList.add("hidden");
+                }
+            }
 
             document.getElementById("detailModal").classList.remove("hidden");
         }
@@ -3262,8 +3529,8 @@
         }
 
         function getDocObj(schoolNo, docKey) {
-            if (!monthlyData[schoolNo] || !monthlyData[schoolNo][currentMonth]) return null;
-            const m = monthlyData[schoolNo][currentMonth];
+            if (!monthlyData[schoolNo] || !monthlyData[schoolNo][refMonth()]) return null;
+            const m = monthlyData[schoolNo][refMonth()];
             if (!m.documents) m.documents = {};
             if (!m.documents[docKey]) m.documents[docKey] = { url: "", checked: false };
             return m.documents[docKey];
@@ -3271,7 +3538,7 @@
 
         function afterDocChange(schoolNo) {
             saveToLocalStorage(schoolNo);
-            renderDocChecklist(schoolNo, monthlyData[schoolNo][currentMonth].documents || {});
+            renderDocChecklist(schoolNo, monthlyData[schoolNo][refMonth()].documents || {});
             updateActiveMonthData();
         }
 
@@ -3315,26 +3582,33 @@
                 return;
             }
             if (!activeModalSchool) return;
-            if (newStatus === "Diverifikasi Dinas" || newStatus === "Disahkan BUD") {
-                const curDocs = monthlyData[activeModalSchool.no]?.[currentMonth]?.documents || {};
+            const no = activeModalSchool.no;
+            const pMonths = getPeriodMonths();
+            const willLock = LOCKED_STATUSES.indexOf(newStatus) !== -1;
+            if (willLock) {
+                const curDocs = monthlyData[no]?.[refMonth()]?.documents || {};
                 const n = countDocsNeedFix(curDocs);
                 if (n > 0 && !confirm(`Masih ada ${n} dokumen yang ditandai "Perlu perbaikan". Tetap ubah status menjadi "${newStatus}"?`)) return;
+                const txt = pMonths.length > 1 ? `${pMonths.length} bulan pada periode ${periodLabel()}` : `bulan ${monthNames[months.indexOf(pMonths[0])]}`;
+                if (!confirm(`Setelah "${newStatus}", sekolah TIDAK DAPAT lagi menginput/mengunggah data untuk ${txt}. Lanjutkan?`)) return;
             }
-            if (!monthlyData[activeModalSchool.no]) monthlyData[activeModalSchool.no] = {};
-            if (!monthlyData[activeModalSchool.no][currentMonth]) {
-                monthlyData[activeModalSchool.no][currentMonth] = {
-                    pendapatan: { reguler: 0, kinerja: 0, jagirMasuk: 0, setoranTunai: 0, lebihTransferMasuk: 0 },
-                    belanja: { pegawai: 0, barjasReg: 0, barjasKin: 0, pm: 0, pmKin: 0, atl: 0, atlKin: 0, jagirKeluar: 0, lebihTransferKeluar: 0 },
-                    documents: {},
-                    verifStatus: newStatus
-                };
-            } else {
-                monthlyData[activeModalSchool.no][currentMonth].verifStatus = newStatus;
-            }
-            saveToLocalStorage(activeModalSchool.no);
+            if (!monthlyData[no]) monthlyData[no] = {};
+            pMonths.forEach(m => {
+                if (!monthlyData[no][m]) {
+                    monthlyData[no][m] = {
+                        pendapatan: { reguler: 0, kinerja: 0, jagirMasuk: 0, setoranTunai: 0, lebihTransferMasuk: 0 },
+                        belanja: { pegawai: 0, barjasReg: 0, barjasKin: 0, pm: 0, pmKin: 0, atl: 0, atlKin: 0, jagirKeluar: 0, lebihTransferKeluar: 0 },
+                        documents: {}, verifStatus: newStatus
+                    };
+                }
+                monthlyData[no][m].verifStatus = newStatus;
+                if (willLock) { monthlyData[no][m].verifiedAt = new Date().toISOString(); monthlyData[no][m].verifiedBy = (currentUser && currentUser.username) || ""; }
+                else { delete monthlyData[no][m].verifiedAt; delete monthlyData[no][m].verifiedBy; }
+            });
+            saveToLocalStorage(no);
             updateActiveMonthData();
-            openModal(activeModalSchool.no);
-            alert(`Status verifikasi berhasil diubah menjadi: ${newStatus} & disinkronkan!`);
+            openModal(no);
+            alert(`Status verifikasi berhasil diubah menjadi: ${newStatus} & disinkronkan!` + (willLock ? "\nInput sekolah untuk periode ini sekarang terkunci." : "\nKunci input sekolah untuk periode ini dibuka."));
         }
 
         function closeModal() {
@@ -3355,15 +3629,17 @@
             }
             const s = baseSchools.find(item => item.no === schoolNo);
             if (!s) return;
-            const rolled = computeRolledData();
-            const mData = rolled[s.no] && rolled[s.no][currentMonth] ? rolled[s.no][currentMonth] : { saldoAwal: 0, totalPendapatan: 0, totalBelanja: 0, kasSeharusnya: 0, belanjaDetail: {} };
+            // Data diambil dari hasil agregasi periode aktif (bulan / triwulan / semester / tahun)
+            const agg = filteredData.find(x => x.no === s.no);
+            const mData = agg ? { saldoAwal: agg.saldoAwal, totalPendapatan: agg.totalPendapatan, totalBelanja: agg.totalBelanja, kasSeharusnya: agg.kasSeharusnya, belanjaDetail: agg.belanjaDetail || {} }
+                              : { saldoAwal: 0, totalPendapatan: 0, totalBelanja: 0, kasSeharusnya: 0, belanjaDetail: {} };
 
             const mIndex = months.indexOf(currentMonth);
             document.getElementById("sp2bSchoolName").textContent = s.name;
             document.getElementById("sp2bKecamatan").textContent = s.kecamatan;
-            let pLabel = periodType === 'bulan' ? monthNames[mIndex] : (periodType === 'triwulan' ? currentTriwulan : `Tahun ${activeYear}`);
+            let pLabel = periodLabel();
             document.getElementById("sp2bMonthTitle").textContent = pLabel;
-            document.getElementById("sp2bNomorDoc").textContent = `00${s.no}/SP2B-BOSP/${currentMonth}/${activeYear}`;
+            document.getElementById("sp2bNomorDoc").textContent = `00${s.no}/SP2B-BOSP/${periodCode()}/${activeYear}`;
             const thEl = document.getElementById("sp2bTahunAnggaran");
             if (thEl) thEl.textContent = activeYear;
             
@@ -3415,7 +3691,7 @@
         }
 
         function openSchoolDashboardModal() {
-            let pLabel = periodType === 'bulan' ? monthNames[months.indexOf(currentMonth)] : (periodType === 'triwulan' ? currentTriwulan : `Tahun ${activeYear}`);
+            let pLabel = periodLabel();
             document.getElementById("dashMonthTitle").textContent = pLabel;
             const dashYearEl = document.getElementById("dashYearTitle");
             if (dashYearEl) dashYearEl.textContent = activeYear;
@@ -3479,7 +3755,7 @@
         function renderKecamatanTable() {
             const selectedKec = document.getElementById("selectKecamatanTarget").value || "RATAHAN";
             document.getElementById("printKecName").textContent = selectedKec;
-            let pLabel = periodType === 'bulan' ? monthNames[months.indexOf(currentMonth)] : (periodType === 'triwulan' ? currentTriwulan : `Tahun ${activeYear}`);
+            let pLabel = periodLabel();
             document.getElementById("printKecMonthName").textContent = pLabel;
             const kecYearEl = document.getElementById("printKecYear");
             if (kecYearEl) kecYearEl.textContent = activeYear;
@@ -3670,10 +3946,10 @@
             }
             const st = sp2bKabStore();
             // Inisialisasi dari periode yang sedang aktif di dashboard + tahun aktif
-            let tipe = periodType === "triwulan" ? "triwulan" : (periodType === "tahun" ? "tahun" : "bulan");
+            let tipe = periodType === "triwulan" ? "triwulan" : (periodType === "semester" ? "semester" : (periodType === "tahun" ? "tahun" : "bulan"));
             kbEl("kbTipe").value = tipe;
             kbEl("kbTahun").value = activeYear;
-            sp2bKabPopulatePeriod(tipe === "bulan" ? currentMonth : (tipe === "triwulan" ? currentTriwulan : "TAHUN"));
+            sp2bKabPopulatePeriod(tipe === "bulan" ? currentMonth : (tipe === "triwulan" ? currentTriwulan : (tipe === "semester" ? currentSemester : "TAHUN")));
             const base = Object.assign({}, SP2B_KAB_DEFAULT, st.last || {});
             const rec = st.records[sp2bKabKey()];
             sp2bKabFillFields(rec || Object.assign({}, base, { nomor: "", tanggal: "", namaSatuan: "" }));
@@ -3941,7 +4217,7 @@
                 alert("Akses ditolak! Ekspor data kabupaten khusus untuk Admin Dinas.");
                 return;
             }
-            let pLabel = periodType === 'bulan' ? currentMonth : (periodType === 'triwulan' ? currentTriwulan : 'Tahunan');
+            let pLabel = periodType === 'bulan' ? currentMonth : (periodType === 'triwulan' ? currentTriwulan : (periodType === 'semester' ? (currentSemester === 'S2' ? 'Semester2' : 'Semester1') : 'Tahunan'));
             let csvContent = "data:text/csv;charset=utf-8,";
             csvContent += `No,NPSN,Nama Sekolah,Alamat,Status,Kecamatan,Periode,Saldo Awal,Total Pendapatan,Total Belanja,Kas Seharusnya,Verifikasi Status\r\n`;
             filteredData.forEach(s => {
