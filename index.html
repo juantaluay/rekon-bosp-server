@@ -1260,8 +1260,18 @@
 
     <!-- JavaScript Data, Auth, Drive Upload & GAS Sync Logic -->
     <script>
-        // URL Web App Google Apps Script
-        const GAS_WEB_APP_URL = window.REKON_API_BASE || (location.origin + "/api");
+        // URL Web App Google Apps Script (deploy dari Code.gs → Deploy → New deployment → Web app)
+        // Ganti string di bawah dengan URL hasil deploy, ATAU set window.REKON_API_BASE sebelum script ini.
+        // Contoh: https://script.google.com/macros/s/AKfycb.../exec
+        const GAS_WEB_APP_URL = (typeof window.REKON_API_BASE === "string" && window.REKON_API_BASE)
+            ? window.REKON_API_BASE.trim()
+            : "https://script.google.com/macros/s/AKfycbxdGspNfrgKY95DgBZvWIv2j0unWBsmOWJ6ueg4jSnsPPVtz4OopXfPabk9NrEYlBGm/exec";
+
+        function isGasConfigured() {
+            return typeof GAS_WEB_APP_URL === "string"
+                && GAS_WEB_APP_URL.indexOf("script.google.com") !== -1
+                && GAS_WEB_APP_URL.indexOf("PASTE_DEPLOYMENT_ID") === -1;
+        }
 
         const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agus", "Sep", "Okt", "Nov", "Des"];
         const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
@@ -1418,15 +1428,23 @@
         }
 
         async function loadFromGoogleSheets() {
+            const loader = document.getElementById("syncLoadingOverlay");
+            if (loader) loader.classList.remove("hidden");
             try {
-                const response = await fetch(GAS_WEB_APP_URL + "/data?year=" + encodeURIComponent(activeYear));
+                if (!isGasConfigured()) {
+                    console.warn("GAS_WEB_APP_URL belum dikonfigurasi. Menggunakan data lokal.");
+                    return;
+                }
+                // Backend Code.gs: doGet → action=getData
+                const response = await fetch(GAS_WEB_APP_URL + "?action=getData", {
+                    method: "GET",
+                    redirect: "follow"
+                });
                 const result = await response.json();
                 if (result.status === "success") {
                     if (result.schools && result.schools.length > 0) baseSchools = result.schools;
                     if (result.monthlyData && Object.keys(result.monthlyData).length > 0) {
-                        if (!result.year || Number(result.year) === Number(activeYear)) {
-                            monthlyData = result.monthlyData;
-                        }
+                        monthlyData = result.monthlyData;
                     }
                     if (Array.isArray(result.users) && result.users.length > 0) {
                         const localUsers = JSON.parse(localStorage.getItem("bosp_usersDB") || "[]");
@@ -1447,11 +1465,12 @@
                     localStorage.setItem(yearKey("monthlyData"), JSON.stringify(monthlyData));
                     localStorage.setItem("bosp_usersDB", JSON.stringify(usersDB));
                     localStorage.setItem("bosp_activeYear", String(activeYear));
+                } else {
+                    console.warn("Respons GAS tidak sukses:", result.message || result);
                 }
             } catch (err) {
                 console.warn("Gagal terhubung ke Google Sheets, menggunakan data persisten lokal.", err);
             } finally {
-                const loader = document.getElementById("syncLoadingOverlay");
                 if (loader) loader.classList.add("hidden");
             }
         }
@@ -1463,13 +1482,12 @@
             localStorage.setItem("bosp_currentUser", JSON.stringify(currentUser));
             localStorage.setItem("bosp_activeYear", String(activeYear));
 
-            if (GAS_WEB_APP_URL) {
+            if (isGasConfigured()) {
                 try {
                     let payload;
                     if (typeof onlySchoolNo === "number" || typeof onlySchoolNo === "string") {
                         payload = {
                             action: "saveAll",
-                            year: activeYear,
                             partial: true,
                             monthlyData: { [onlySchoolNo]: monthlyData[onlySchoolNo] || {} }
                         };
@@ -1477,17 +1495,19 @@
                         const sch = findSchoolForUser(currentUser);
                         payload = sch ? {
                             action: "saveAll",
-                            year: activeYear,
                             partial: true,
                             monthlyData: { [sch.no]: monthlyData[sch.no] || {} }
                         } : null;
                     } else {
-                        payload = { action: "saveAll", year: activeYear, schools: baseSchools, monthlyData: monthlyData, users: usersDB };
+                        payload = { action: "saveAll", schools: baseSchools, monthlyData: monthlyData, users: usersDB };
                     }
                     if (payload) {
-                        await fetch(GAS_WEB_APP_URL + "/save", { method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify(payload)
+                        // Backend Code.gs: doPost → action=saveAll (Content-Type text/plain agar tidak kena preflight CORS)
+                        await fetch(GAS_WEB_APP_URL, {
+                            method: "POST",
+                            headers: { "Content-Type": "text/plain;charset=utf-8" },
+                            body: JSON.stringify(payload),
+                            redirect: "follow"
                         });
                     }
                 } catch (err) {
@@ -1499,11 +1519,12 @@
         let gasReady = false;
         async function ensureServerReady() {
             if (gasReady) return true;
+            if (!isGasConfigured()) return false;
             try {
-                const base = String(GAS_WEB_APP_URL || "").replace(/\/api\/?$/, "");
-                const r = await fetch(base + "/api/health");
+                // Backend Code.gs: doGet tanpa action mengembalikan status + version
+                const r = await fetch(GAS_WEB_APP_URL, { method: "GET", redirect: "follow" });
                 const j = await r.json();
-                gasReady = !!(j && (j.version || j.status === "ok"));
+                gasReady = !!(j && (j.version || j.status === "success"));
             } catch (e) {
                 gasReady = false;
             }
@@ -2699,12 +2720,11 @@
                         }
                         const base64Data = await fileToBase64(file);
                         const schoolObj = baseSchools.find(x => Number(x.no) === Number(schoolNo)) || {};
-                        const resp = await fetch(GAS_WEB_APP_URL + "/upload", {
+                        const resp = await fetch(GAS_WEB_APP_URL, {
                             method: "POST",
-                            headers: { "Content-Type": "application/json" },
+                            headers: { "Content-Type": "text/plain;charset=utf-8" },
                             body: JSON.stringify({
                                 action: "uploadFile",
-                                year: (typeof activeYear !== "undefined" ? activeYear : 2024),
                                 schoolNo: schoolNo,
                                 schoolName: schoolObj.name || "",
                                 npsn: schoolObj.npsn || "",
@@ -2712,7 +2732,8 @@
                                 docType: doc.key,
                                 fileName: file.name,
                                 fileData: base64Data
-                            })
+                            }),
+                            redirect: "follow"
                         });
                         const uploadResult = await resp.json();
                         if (uploadResult.status !== "success" || !uploadResult.fileUrl) {
