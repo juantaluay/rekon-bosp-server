@@ -501,12 +501,7 @@
                     <div class="lp-links">
                         <a href="#fitur">Fitur</a>
                         <a href="#alur">Alur Kerja</a>
-                        <a href="#peran">Untuk Siapa</a>
-                    </div>
-                    <button onclick="openAuthModal()" class="btn btn-gold">
-                        <i class="fa-solid fa-right-to-bracket"></i> <span>Masuk</span>
-                    </button>
-                </div>
+                        <a href="#peran">Untuk Siapa</a>   
             </nav>
 
             <div class="lp-hero-in">
@@ -584,42 +579,6 @@
                 <div class="lp-step rv" style="--d:.18s"><h3>Pengesahan &amp; cetak SP2B</h3><p>Setelah disahkan BUD, SP2B dapat dicetak dan diarsipkan.</p></div>
             </div>
         </section>
-
-        <!-- Peran -->
-        <section class="lp-sec" id="peran">
-            <div class="rv"><span class="lp-eyebrow">Untuk Siapa</span>
-            <h2 class="lp-h2">Tampilan yang menyesuaikan peran Anda.</h2></div>
-            <div class="lp-roles">
-                <div class="lp-role r1 rv">
-                    <span class="tag"><i class="fa-solid fa-school"></i></span>
-                    <h3>Operator Satuan Pendidikan</h3>
-                    <ul>
-                        <li><i class="fa-solid fa-check"></i> Dashboard khusus sekolah Anda</li>
-                        <li><i class="fa-solid fa-check"></i> Input realisasi &amp; unggah PDF dari HP</li>
-                        <li><i class="fa-solid fa-check"></i> Pantau progres 12 bulan sekilas</li>
-                    </ul>
-                    <button onclick="openAuthModal(); switchAuthTab('register');" class="btn btn-gold">Daftar sebagai Operator <i class="fa-solid fa-arrow-right"></i></button>
-                </div>
-                <div class="lp-role r2 rv" style="--d:.08s">
-                    <span class="tag"><i class="fa-solid fa-user-shield"></i></span>
-                    <h3>Administrator Dinas</h3>
-                    <ul>
-                        <li><i class="fa-solid fa-check"></i> Verifikasi akun, data master &amp; berkas</li>
-                        <li><i class="fa-solid fa-check"></i> Rekap kecamatan, kabupaten &amp; tahunan</li>
-                        <li><i class="fa-solid fa-check"></i> Ekspor Excel &amp; cetak SP2B</li>
-                    </ul>
-                    <button onclick="openAuthModal()" class="btn btn-ghost">Masuk sebagai Admin <i class="fa-solid fa-arrow-right"></i></button>
-                </div>
-            </div>
-        </section>
-
-        <div class="lp-band rv">
-            <div class="lp-band-in">
-                <h2>Siap merapikan rekonsiliasi dana BOSP?</h2>
-                <p>Masuk dengan akun Anda dan pilih Tahun Anggaran. Setiap tahun memiliki database realisasi &amp; dokumen terpisah.</p>
-                <button onclick="openAuthModal()" class="btn btn-gold btn-lg"><i class="fa-solid fa-right-to-bracket"></i> Masuk ke Sistem</button>
-            </div>
-        </div>
 
         <footer class="lp-foot">
             &copy; 2026 Tim BOSP Kabupaten Minahasa Tenggara (Coder: Juan J. Ch. Taluay; David Ch. Kawulusan). Hak Cipta Dilindungi Undang-Undang.
@@ -699,6 +658,11 @@
                         <div id="npsnResultInfo" class="mt-1 text-[11px] text-slate-500 italic">Masukkan NPSN yang terdaftar di Data Master Sekolah.</div>
                     </div>
 
+                    <label class="fld"><span class="lb">Nomor WhatsApp</span>
+                        <span class="ctl"><i class="lead fa-brands fa-whatsapp"></i>
+                        <input type="tel" id="regWhatsapp" inputmode="tel" placeholder="Contoh: 081234567890" autocomplete="tel"></span>
+                        <p class="hint"><i class="fa-solid fa-info-circle mr-1"></i>Setiap progres dari Admin Dinas (verifikasi, dokumen, rekonsiliasi) akan dikirim ke nomor ini.</p>
+                    </label>
                     <label class="fld"><span class="lb">Username</span>
                         <span class="ctl"><i class="lead fa-solid fa-user"></i>
                         <input type="text" id="regUsername" placeholder="Buat username untuk login…" autocomplete="username" autocapitalize="none" spellcheck="false"></span>
@@ -757,6 +721,9 @@
                                 </button>
                                 <button onclick="openUserListModal(); closeAdminMenu();" class="mi" role="menuitem">
                                     <i class="fa-solid fa-users" style="background:#dbeafe;color:#1d4ed8"></i><span>Daftar User Terdaftar<small>Verifikasi &amp; kelola akun</small></span>
+                                </button>
+                                <button onclick="openWaLogModal(); closeAdminMenu();" class="mi" role="menuitem">
+                                    <i class="fa-brands fa-whatsapp" style="background:#d1fae5;color:#047857"></i><span>Notifikasi WhatsApp<small>Riwayat &amp; kirim ke user</small></span>
                                 </button>
                                 <button onclick="openKecamatanModal(); closeAdminMenu();" class="mi" role="menuitem">
                                     <i class="fa-solid fa-map-location-dot" style="background:#ccfbf1;color:#0f766e"></i><span>Rekapitulasi Kecamatan<small>Ringkasan per kecamatan</small></span>
@@ -1036,6 +1003,7 @@
                                     <th class="py-2.5 px-3">Username</th>
                                     <th class="py-2.5 px-3">Peran (Role)</th>
                                     <th class="py-2.5 px-3">Peran / Instansi (Sekolah / NPSN)</th>
+                                    <th class="py-2.5 px-3">WhatsApp</th>
                                     <th class="py-2.5 px-3 text-center">Status</th>
                                     <th class="py-2.5 px-3 text-center">Aksi</th>
                                 </tr>
@@ -1047,6 +1015,45 @@
             </div>
             <div class="bg-slate-100 px-6 py-3 flex justify-end border-t border-slate-200">
                 <button onclick="closeUserListModal()" class="bg-slate-600 hover:bg-slate-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Riwayat Notifikasi WhatsApp (Admin Only) -->
+    <div id="waLogModal" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden z-50 flex items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full overflow-hidden max-h-[90vh] flex flex-col">
+            <div class="bg-[#0F2C59] text-white px-6 py-4 flex justify-between items-center">
+                <h3 class="text-base font-bold"><i class="fa-brands fa-whatsapp mr-2"></i> Notifikasi WhatsApp ke User</h3>
+                <button onclick="closeWaLogModal()" class="text-white hover:text-slate-300 text-xl font-bold">&times;</button>
+            </div>
+            <div class="p-6 space-y-4 text-xs overflow-y-auto">
+                <div class="bg-emerald-50 border-l-4 border-emerald-600 p-3 rounded-r-lg text-emerald-900 space-y-1">
+                    <p class="font-bold">Cara kerja</p>
+                    <p>Setiap progres yang Anda lakukan (persetujuan akun, status verifikasi, pemeriksaan dokumen, tanda selesai rekonsiliasi) dikirim ke nomor WhatsApp operator sekolah terkait. Perubahan beruntun dalam beberapa detik digabung menjadi satu pesan.</p>
+                    <p>Jika pengiriman otomatis di server belum aktif, pesan berstatus <b>Menunggu</b> dan dapat dikirim dengan tombol <b>Buka WA</b>.</p>
+                </div>
+                <label class="flex items-center gap-2 font-semibold text-slate-700 cursor-pointer">
+                    <input type="checkbox" id="waAutoToggle" onchange="waToggleAuto(this.checked)" class="w-4 h-4">
+                    Kirim otomatis lewat server (Google Apps Script + gateway WhatsApp)
+                </label>
+                <div class="overflow-x-auto border border-slate-200 rounded-lg max-h-80 overflow-y-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 sticky top-0">
+                                <th class="py-2.5 px-3">Waktu</th>
+                                <th class="py-2.5 px-3">Penerima</th>
+                                <th class="py-2.5 px-3">Pesan</th>
+                                <th class="py-2.5 px-3 text-center">Status</th>
+                                <th class="py-2.5 px-3 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="waLogBody" class="divide-y divide-slate-200"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="bg-slate-100 px-6 py-3 flex justify-between border-t border-slate-200">
+                <button onclick="waClearLog()" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition">Hapus Riwayat</button>
+                <button onclick="closeWaLogModal()" class="bg-slate-600 hover:bg-slate-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition">Tutup</button>
             </div>
         </div>
     </div>
@@ -2046,6 +2053,7 @@
                 role: pick("role", "peran", "peranrole", "level"),
                 schoolNo: pick("schoolno", "nosekolah", "no", "nomorsekolah"),
                 npsn: pick("npsn", "nomornpsn"),
+                whatsapp: pick("whatsapp", "wa", "nowhatsapp", "nomorwhatsapp", "nowa", "nomorwa", "nohp", "hp"),
                 status: pick("status", "statusakun") || "Aktif"
             };
         }
@@ -2077,7 +2085,7 @@
                         result.users.map(mapSheetUser).filter(u => u.username).forEach(u => {
                             const loc = localMap.get(u.username.toLowerCase()) || {};
                             const merged = { ...u };
-                            ["npsn", "schoolNo", "role", "name"].forEach(k => { if (isEmptyVal(merged[k]) && !isEmptyVal(loc[k])) merged[k] = loc[k]; });
+                            ["npsn", "schoolNo", "role", "name", "whatsapp"].forEach(k => { if (isEmptyVal(merged[k]) && !isEmptyVal(loc[k])) merged[k] = loc[k]; });
                             mergedUsers.set(u.username.toLowerCase(), merged);
                         });
                         usersDB = Array.from(mergedUsers.values());
@@ -2292,6 +2300,7 @@
                 return;
             }
             // Simpan data terakhir sebelum keluar
+            try { waFlush(); } catch (e) { console.warn(e); }
             try { saveToLocalStorage(); } catch (e) { console.warn(e); }
             stopIdleWatch();
             currentUser = null;
@@ -2300,7 +2309,7 @@
             document.getElementById("landingPage").classList.remove("hidden");
             // Tutup modal yang mungkin masih terbuka
             ["authModal", "inputModal", "detailModal", "sp2bModal", "masterModal", "userListModal",
-             "changePasswordModal", "kecamatanModal", "sp2bAnnualModal", "schoolDashboardModal", "sp2bKabModal"
+             "waLogModal", "changePasswordModal", "kecamatanModal", "sp2bAnnualModal", "schoolDashboardModal", "sp2bKabModal"
             ].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.classList.add("hidden");
@@ -2484,9 +2493,14 @@
             const role = document.getElementById("regRole").value;
             const u = document.getElementById("regUsername").value.trim();
             const p = document.getElementById("regPassword").value.trim();
+            const waVal = waNormalize(document.getElementById("regWhatsapp").value);
 
             if (!u || !p) {
                 alert("Mohon lengkapi Username dan Password!");
+                return;
+            }
+            if (!waVal) {
+                alert("Nomor WhatsApp wajib diisi dengan benar (nomor HP Indonesia), misalnya 081234567890.");
                 return;
             }
             if (usersDB.some(x => x.username === u)) {
@@ -2525,6 +2539,7 @@
                 role,
                 schoolNo,
                 npsn: npsnVal,
+                whatsapp: waVal,
                 status: "Pending"
             };
 
@@ -2607,14 +2622,14 @@
                     instansiText = "administrator dinas pendidikan kabupaten";
                 }
 
-                const searchTarget = `${u.username} ${u.role} ${instansiText}`.toLowerCase();
+                const searchTarget = `${u.username} ${u.role} ${instansiText} ${u.whatsapp || ''}`.toLowerCase();
                 return searchTarget.includes(keyword);
             });
 
             document.getElementById("userCountBadge").textContent = filteredUsers.length;
 
             if (filteredUsers.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400">Tidak ada akun user yang ditemukan dengan kata kunci tersebut.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400">Tidak ada akun user yang ditemukan dengan kata kunci tersebut.</td></tr>`;
                 return;
             }
 
@@ -2653,6 +2668,7 @@
                     <td class="py-2.5 px-3 font-mono font-bold">${u.username}</td>
                     <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${u.role === 'Admin Dinas' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'}">${u.role}</span></td>
                     <td class="py-2.5 px-3">${instansiColumn}</td>
+                    <td class="py-2.5 px-3 whitespace-nowrap">${waCellHtml(u)}</td>
                     <td class="py-2.5 px-3 text-center">${statusBadge}</td>
                     <td class="py-2.5 px-3 text-center">${actionButtons}</td>
                 `;
@@ -2670,6 +2686,7 @@
                 targetUser.status = "Aktif";
                 saveToLocalStorage();
                 renderUserTable();
+                waNotifyAccountApproved(targetUser);
                 alert(`Akun (${targetUser.username}) berhasil disetujui & diaktifkan!`);
             }
         }
@@ -2682,6 +2699,284 @@
                 alert("Akun user berhasil dihapus.");
             }
         }
+
+        // =====================================================================
+        // NOTIFIKASI WHATSAPP KE USER — progres yang dilakukan Admin Dinas
+        // =====================================================================
+        const WA_QUEUE_DELAY = 5000; // perubahan beruntun digabung jadi 1 pesan per sekolah & periode
+        let waQueue = {};
+        let waTimer = null;
+        let waOutbox = [];
+        try { waOutbox = JSON.parse(localStorage.getItem("bosp_waOutbox") || "[]") || []; } catch (e) { waOutbox = []; }
+        waOutbox.forEach(e => { if (e && e.status === "Mengirim") e.status = "Menunggu"; });
+        let waAutoSend = localStorage.getItem("bosp_waAuto") !== "0";
+
+        // Normalisasi nomor HP Indonesia ke format 62xxxxxxxxxx. Mengembalikan "" jika tidak valid.
+        function waNormalize(raw) {
+            let d = String(raw == null ? "" : raw).replace(/\D/g, "");
+            if (d.startsWith("00")) d = d.slice(2);
+            if (d.startsWith("0")) d = "62" + d.slice(1);
+            else if (d.startsWith("8")) d = "62" + d;
+            return /^628\d{8,12}$/.test(d) ? d : "";
+        }
+
+        function waDisplay(raw) {
+            const n = waNormalize(raw);
+            return n ? "0" + n.slice(2) : String(raw || "");
+        }
+
+        function waCellHtml(u) {
+            const n = waNormalize(u.whatsapp);
+            const num = n
+                ? `<span class="font-mono">${escHtml(waDisplay(n))}</span>`
+                : `<span class="text-rose-600 italic">Belum diisi</span>`;
+            return num + ` <button onclick="editUserWhatsapp('${escHtml(u.username)}')" class="text-blue-600 hover:text-blue-800 ml-1" title="Ubah nomor WhatsApp"><i class="fa-solid fa-pen"></i></button>`;
+        }
+
+        function editUserWhatsapp(username) {
+            if (!currentUser || currentUser.role !== "Admin Dinas") { alert("Akses ditolak! Hanya Admin Dinas yang dapat mengubah nomor WhatsApp user."); return; }
+            const u = usersDB.find(x => x.username === username);
+            if (!u) return;
+            const input = prompt(`Nomor WhatsApp untuk akun "${u.username}":\n(contoh: 081234567890)`, u.whatsapp ? waDisplay(u.whatsapp) : "");
+            if (input === null) return;
+            const n = waNormalize(input);
+            if (!n) { alert("Nomor tidak valid. Gunakan nomor HP Indonesia, misalnya 081234567890."); return; }
+            u.whatsapp = n;
+            if (currentUser.username === u.username) currentUser.whatsapp = n;
+            saveToLocalStorage();
+            renderUserTable();
+        }
+
+        function waAuthNow() {
+            return currentUser ? { username: currentUser.username, password: currentUser.password } : null;
+        }
+
+        function waSaveOutbox() {
+            if (waOutbox.length > 100) waOutbox.length = 100;
+            try { localStorage.setItem("bosp_waOutbox", JSON.stringify(waOutbox)); } catch (e) {}
+        }
+
+        function waRecipientsForSchool(no) {
+            return usersDB.filter(u => {
+                if (u.role !== "Operator Sekolah" || u.status !== "Aktif" || !waNormalize(u.whatsapp)) return false;
+                const sch = findSchoolForUser(u);
+                return !!sch && Number(sch.no) === Number(no);
+            });
+        }
+
+        function waToast(html, actionLabel, actionFn) {
+            let box = document.getElementById("waToastBox");
+            if (!box) {
+                box = document.createElement("div");
+                box.id = "waToastBox";
+                box.className = "no-print fixed right-4 z-[70] flex flex-col gap-2 items-end";
+                box.style.bottom = "calc(16px + env(safe-area-inset-bottom, 0px))";
+                box.style.maxWidth = "calc(100vw - 32px)";
+                document.body.appendChild(box);
+            }
+            const t = document.createElement("div");
+            t.className = "bg-slate-900 text-white text-xs rounded-xl shadow-xl px-3.5 py-2.5 flex items-center gap-3";
+            t.innerHTML = `<i class="fa-brands fa-whatsapp text-emerald-400 text-base"></i><span>${html}</span>`;
+            if (actionLabel) {
+                const b = document.createElement("button");
+                b.className = "bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-2.5 py-1 rounded-lg whitespace-nowrap";
+                b.textContent = actionLabel;
+                b.onclick = () => { actionFn(); t.remove(); };
+                t.appendChild(b);
+            }
+            box.appendChild(t);
+            setTimeout(() => t.remove(), actionLabel ? 15000 : 5000);
+        }
+
+        function waCreateEntry(user, schoolName, message) {
+            const e = {
+                id: "wa_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+                at: new Date().toISOString(),
+                to: user.name || user.username || "",
+                school: schoolName || "",
+                phone: waNormalize(user.whatsapp),
+                message: message,
+                status: "Menunggu",
+                error: ""
+            };
+            waOutbox.unshift(e);
+            waSaveOutbox();
+            return e;
+        }
+
+        // Kirim lewat server (action "sendWA" di Code.gs). Jika belum tersedia, pesan tetap "Menunggu" untuk dikirim manual.
+        async function waDeliver(entry, auth) {
+            if (waAutoSend && isGasConfigured()) {
+                entry.status = "Mengirim";
+                waSaveOutbox(); waRenderLog();
+                try {
+                    const payload = { action: "sendWA", target: entry.phone, message: entry.message };
+                    if (auth) payload.auth = auth;
+                    const r = await gasPost(payload);
+                    if (r && r.status === "success") { entry.status = "Terkirim"; entry.error = ""; }
+                    else { entry.status = "Menunggu"; entry.error = (r && r.message) || "Server belum mendukung pengiriman WhatsApp."; }
+                } catch (err) {
+                    entry.status = "Menunggu";
+                    entry.error = String((err && err.message) || err);
+                }
+            } else {
+                entry.status = "Menunggu";
+                entry.error = "";
+            }
+            waSaveOutbox(); waRenderLog();
+            const who = `<b>${escHtml(entry.school || entry.to)}</b>`;
+            if (entry.status === "Terkirim") waToast(`Notifikasi WhatsApp terkirim ke ${who}.`);
+            else waToast(`Notifikasi WhatsApp untuk ${who} siap dikirim.`, "Kirim", () => waOpenManual(entry.id));
+        }
+
+        function waOpenManual(id) {
+            const e = waOutbox.find(x => x.id === id);
+            if (!e || !e.phone) return;
+            window.open("https://wa.me/" + e.phone + "?text=" + encodeURIComponent(e.message), "_blank", "noopener");
+            if (e.status !== "Terkirim") e.status = "Dibuka manual";
+            waSaveOutbox(); waRenderLog();
+        }
+
+        function waResend(id) {
+            const e = waOutbox.find(x => x.id === id);
+            if (e) waDeliver(e, waAuthNow());
+        }
+
+        // ---------- Antrean progres per sekolah ----------
+        function waEnqueue(schoolNo, itemKey, build) {
+            if (!currentUser || currentUser.role !== "Admin Dinas") return;
+            const period = periodLabel();
+            const gk = schoolNo + "|" + activeYear + "|" + period;
+            const g = waQueue[gk] || (waQueue[gk] = { schoolNo: schoolNo, year: activeYear, period: period, items: {}, auth: waAuthNow() });
+            g.items[itemKey] = build;
+            clearTimeout(waTimer);
+            waTimer = setTimeout(() => waFlush(), WA_QUEUE_DELAY);
+        }
+
+        // Baris dokumen dibaca dari kondisi TERKINI saat antrean dikirim (centang, perlu perbaikan, catatan)
+        function waQueueDoc(schoolNo, docKey) {
+            const m = refMonth();
+            waEnqueue(schoolNo, "doc:" + docKey, () => {
+                const d = monthlyData[schoolNo] && monthlyData[schoolNo][m] && monthlyData[schoolNo][m].documents && monthlyData[schoolNo][m].documents[docKey];
+                if (!d) return null;
+                const item = DOC_LABELS.find(x => x.key === docKey);
+                const label = item ? item.label.replace(/^\d+\.\s*/, "") : docKey;
+                if (d.needsFix) return `⚠️ ${label}: *perlu perbaikan*` + (d.note ? ` — "${d.note}"` : "");
+                if (d.checked) return `✅ ${label}: sesuai (diverifikasi)`;
+                return null;
+            });
+        }
+
+        function waBuildMessage(schoolName, g, lines) {
+            return [
+                "*SIGAP-BOSP Kab. Minahasa Tenggara*",
+                "",
+                `Yth. Operator ${schoolName},`,
+                `Berikut pembaruan progres rekonsiliasi dana BOSP Anda (TA ${g.year} · ${g.period}):`,
+                "",
+                ...lines.map(l => "• " + l),
+                "",
+                "Silakan buka aplikasi SIGAP-BOSP untuk melihat detailnya.",
+                "_Pesan otomatis dari Admin Dinas Pendidikan._"
+            ].join("\n");
+        }
+
+        function waFlush(deferOnly) {
+            clearTimeout(waTimer); waTimer = null;
+            const groups = Object.values(waQueue);
+            waQueue = {};
+            groups.forEach(g => {
+                const lines = Object.values(g.items).map(fn => { try { return fn(); } catch (e) { return null; } }).filter(Boolean);
+                if (!lines.length) return;
+                const sch = baseSchools.find(x => Number(x.no) === Number(g.schoolNo));
+                const schoolName = sch ? sch.name : "Sekolah";
+                const recips = waRecipientsForSchool(g.schoolNo);
+                if (!recips.length) {
+                    if (!deferOnly) waToast(`Operator <b>${escHtml(schoolName)}</b> belum mengisi nomor WhatsApp, notifikasi tidak dikirim.`);
+                    return;
+                }
+                recips.forEach(u => {
+                    const entry = waCreateEntry(u, schoolName, waBuildMessage(schoolName, g, lines));
+                    if (!deferOnly) waDeliver(entry, g.auth);
+                });
+            });
+        }
+
+        // Persetujuan akun: langsung dikirim ke pemilik akun
+        function waNotifyAccountApproved(user) {
+            const phone = waNormalize(user.whatsapp);
+            if (!phone) {
+                waToast(`Akun <b>${escHtml(user.username)}</b> disetujui, tetapi belum ada nomor WhatsApp. Isi lewat ikon pensil di Daftar User.`);
+                return;
+            }
+            const message = [
+                "*SIGAP-BOSP Kab. Minahasa Tenggara*",
+                "",
+                `Yth. ${user.name || user.username},`,
+                `Akun Anda (username: ${user.username}) telah *disetujui* oleh Admin Dinas Pendidikan dan sudah dapat digunakan untuk masuk ke sistem.`,
+                "",
+                "_Pesan otomatis dari Admin Dinas Pendidikan._"
+            ].join("\n");
+            const sch = findSchoolForUser(user);
+            const entry = waCreateEntry(user, sch ? sch.name : (user.name || user.username), message);
+            waDeliver(entry, waAuthNow());
+        }
+
+        // ---------- Modal riwayat ----------
+        function openWaLogModal() {
+            if (!currentUser || currentUser.role !== "Admin Dinas") { alert("Akses ditolak! Fitur ini khusus untuk Administrator Dinas."); return; }
+            document.getElementById("waAutoToggle").checked = waAutoSend;
+            waRenderLog();
+            document.getElementById("waLogModal").classList.remove("hidden");
+        }
+
+        function closeWaLogModal() {
+            document.getElementById("waLogModal").classList.add("hidden");
+        }
+
+        function waToggleAuto(on) {
+            waAutoSend = !!on;
+            try { localStorage.setItem("bosp_waAuto", on ? "1" : "0"); } catch (e) {}
+        }
+
+        function waClearLog() {
+            if (!confirm("Hapus seluruh riwayat notifikasi WhatsApp di perangkat ini?")) return;
+            waOutbox = [];
+            waSaveOutbox();
+            waRenderLog();
+        }
+
+        function waRenderLog() {
+            const tb = document.getElementById("waLogBody");
+            if (!tb) return;
+            if (!waOutbox.length) {
+                tb.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-slate-400">Belum ada notifikasi. Pesan dibuat otomatis saat Anda memproses progres sekolah.</td></tr>`;
+                return;
+            }
+            const badge = {
+                "Terkirim": "bg-emerald-100 text-emerald-800",
+                "Menunggu": "bg-amber-100 text-amber-800",
+                "Mengirim": "bg-blue-100 text-blue-800",
+                "Dibuka manual": "bg-blue-100 text-blue-800"
+            };
+            tb.innerHTML = waOutbox.map(e => {
+                const t = new Date(e.at).toLocaleString("id-ID", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+                const canResend = e.status !== "Terkirim" && e.status !== "Mengirim" && waAutoSend && isGasConfigured();
+                return `<tr>
+                    <td class="py-2 px-3 whitespace-nowrap text-slate-600">${escHtml(t)}</td>
+                    <td class="py-2 px-3"><b>${escHtml(e.school || e.to)}</b><br><span class="font-mono text-slate-500">${escHtml(waDisplay(e.phone))}</span></td>
+                    <td class="py-2 px-3 text-slate-600" style="max-width:280px"><div class="line-clamp-3 whitespace-pre-line" title="${escHtml(e.message)}">${escHtml(e.message.split("\n").slice(2, -2).filter(Boolean).join("\n"))}</div></td>
+                    <td class="py-2 px-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${badge[e.status] || "bg-slate-100 text-slate-700"}" title="${escHtml(e.error || "")}">${escHtml(e.status)}</span></td>
+                    <td class="py-2 px-3 text-center whitespace-nowrap">
+                        <button onclick="waOpenManual('${e.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 rounded text-[10px]" title="Buka WhatsApp dengan pesan terisi"><i class="fa-brands fa-whatsapp"></i> Buka WA</button>
+                        ${canResend ? `<button onclick="waResend('${e.id}')" class="bg-slate-600 hover:bg-slate-700 text-white px-2 py-1 rounded text-[10px] ml-1" title="Kirim ulang lewat server">Kirim ulang</button>` : ""}
+                    </td>
+                </tr>`;
+            }).join("");
+        }
+
+        // Jangan kehilangan progres yang masih mengantre saat halaman ditutup: simpan ke riwayat sebagai "Menunggu"
+        window.addEventListener("pagehide", () => { try { waFlush(true); } catch (e) {} });
 
         function openMasterModal() {
             if (!currentUser || currentUser.role !== "Admin Dinas") {
@@ -3673,6 +3968,7 @@
                 md.reconDone = false;
                 delete md.reconDoneAt;
             }
+            waEnqueue(no, "recon", () => done ? "Rekonsiliasi dinyatakan *SELESAI* oleh Dinas" : "Penandaan selesai rekonsiliasi dibatalkan oleh Dinas");
             saveToLocalStorage(no);
             const pg = currentPage;
             updateActiveMonthData();
@@ -4613,6 +4909,7 @@
             const d = getDocObj(schoolNo, docKey);
             if (!d) return;
             d.checked = isChecked;
+            waQueueDoc(schoolNo, docKey);
             if (isChecked) {
                 d.needsFix = false;
                 d.reuploaded = false;
@@ -4625,6 +4922,7 @@
             const d = getDocObj(schoolNo, docKey);
             if (!d) return;
             d.needsFix = needsFix;
+            waQueueDoc(schoolNo, docKey);
             if (needsFix) {
                 d.checked = false;
                 d.fixRequestedAt = new Date().toISOString();
@@ -4640,6 +4938,7 @@
             const d = getDocObj(schoolNo, docKey);
             if (!d) return;
             d.note = String(value || "").trim();
+            waQueueDoc(schoolNo, docKey);
             saveToLocalStorage(schoolNo);
         }
 
@@ -4674,6 +4973,7 @@
             });
             saveToLocalStorage(no);
             updateActiveMonthData();
+            waEnqueue(no, "status", () => `Status verifikasi: *${newStatus}*` + (willLock ? " (input data sekolah untuk periode ini dikunci)" : ""));
             openModal(no);
             alert(`Status verifikasi berhasil diubah menjadi: ${newStatus} & disinkronkan!` + (willLock ? "\nInput sekolah untuk periode ini sekarang terkunci." : "\nKunci input sekolah untuk periode ini dibuka."));
         }
