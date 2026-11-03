@@ -1170,8 +1170,42 @@
                 </div>
             </div>
 
+            <!-- Panel Rekap Khusus Operator Sekolah -->
+            <div id="operatorRekapPanel" class="card hidden no-print" style="padding:20px">
+                <div class="flex flex-wrap items-start justify-between gap-3" style="margin-bottom:16px">
+                    <div>
+                        <div class="rk-sec-h" style="margin-bottom:6px"><i class="fa-solid fa-file-invoice-dollar"></i><span>Rincian Realisasi Rekonsiliasi Sekolah</span></div>
+                        <p id="opRekapSchoolMeta" class="text-sm text-slate-600" style="margin:0"></p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-gold" onclick="openInputModal()"><i class="fa-solid fa-pen-to-square"></i> Input / Ajukan</button>
+                        <button type="button" class="btn btn-navy" id="opRekapDetailBtn"><i class="fa-solid fa-eye"></i> Lihat Detail &amp; Berkas</button>
+                    </div>
+                </div>
+                <div id="opRekapStatusRow" class="flex flex-wrap gap-2" style="margin-bottom:14px"></div>
+                <div id="opRekapKpis" class="kpi-grid" style="margin-bottom:16px"></div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px">
+                    <div class="rounded-xl border border-slate-200 overflow-hidden">
+                        <div class="px-3 py-2 text-xs font-bold text-white" style="background:#0F2C59">1. Saldo Awal</div>
+                        <div id="opRekapSaldo" class="p-3 text-xs space-y-1.5"></div>
+                    </div>
+                    <div class="rounded-xl border border-slate-200 overflow-hidden">
+                        <div class="px-3 py-2 text-xs font-bold text-white bg-emerald-700">2. Pendapatan &amp; Penerimaan</div>
+                        <div id="opRekapPendapatan" class="p-3 text-xs space-y-1.5"></div>
+                    </div>
+                    <div class="rounded-xl border border-slate-200 overflow-hidden">
+                        <div class="px-3 py-2 text-xs font-bold text-white bg-rose-700">3. Belanja &amp; Pengeluaran</div>
+                        <div id="opRekapBelanja" class="p-3 text-xs space-y-1.5"></div>
+                    </div>
+                    <div class="rounded-xl border border-slate-200 overflow-hidden">
+                        <div class="px-3 py-2 text-xs font-bold text-white" style="background:#1e3a5f">4. Kas &amp; Rekonsiliasi</div>
+                        <div id="opRekapKas" class="p-3 text-xs space-y-1.5"></div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Data Table Section -->
-            <div class="card tbl-card">
+            <div class="card tbl-card" id="mainTableCard">
                 <div class="tbl-head">
                     <div class="tbl-title">
                         <h3 id="tableTitleText">Daftar Rekonsiliasi Satuan Pendidikan</h3>
@@ -2772,11 +2806,24 @@
                 if(changePassBtn) changePassBtn.classList.add("hidden");
                 
                 if(cardTotalSekolahWrapper) cardTotalSekolahWrapper.classList.add("hidden");
-                if(kpiCardsContainer) kpiCardsContainer.className = "kpi-grid";
+                // KPI ringkas kabupaten disembunyikan; rincian ada di panel rekap sekolah
+                if(kpiCardsContainer) kpiCardsContainer.classList.add("hidden");
                 if(filterSectionContainer) filterSectionContainer.classList.add("hidden");
                 if(chartsSectionContainer) chartsSectionContainer.classList.add("hidden");
                 if(navDashboardBtn) navDashboardBtn.classList.add("hidden");
-                if(tableTitleText) tableTitleText.textContent = "Data Realisasi Rekonsiliasi Sekolah Anda";
+                if(tableTitleText) tableTitleText.textContent = "Rincian Realisasi Rekonsiliasi Sekolah";
+                const opPanel = document.getElementById("operatorRekapPanel");
+                const mainTbl = document.getElementById("mainTableCard");
+                if (opPanel) opPanel.classList.remove("hidden");
+                // Sembunyikan tabel daftar multi-sekolah; operator fokusar rekap rinci sekolahnya
+                if (mainTbl) mainTbl.classList.add("hidden");
+            }
+            if (currentUser.role === "Admin Dinas") {
+                const opPanel = document.getElementById("operatorRekapPanel");
+                const mainTbl = document.getElementById("mainTableCard");
+                if (opPanel) opPanel.classList.add("hidden");
+                if (mainTbl) mainTbl.classList.remove("hidden");
+                if (kpiCardsContainer) kpiCardsContainer.classList.remove("hidden");
             }
         }
 
@@ -5863,30 +5910,140 @@
             }
         }
 
-        function filterData() {
-            let rolled = computeRolledData();
-            let rawSchools = baseSchools;
 
-            if (currentUser && currentUser.role === "Operator Sekolah") {
-                const matchedSchool = findSchoolForUser(currentUser);
-                rawSchools = matchedSchool ? [matchedSchool] : [];
+        function renderOperatorSchoolRekap() {
+            const panel = document.getElementById("operatorRekapPanel");
+            if (!panel) return;
+            if (!(currentUser && currentUser.role === "Operator Sekolah")) {
+                panel.classList.add("hidden");
+                return;
+            }
+            panel.classList.remove("hidden");
+
+            const s = (filteredData && filteredData[0]) || findSchoolForUser(currentUser);
+            const meta = document.getElementById("opRekapSchoolMeta");
+            const statusRow = document.getElementById("opRekapStatusRow");
+            const kpis = document.getElementById("opRekapKpis");
+            const elSaldo = document.getElementById("opRekapSaldo");
+            const elPend = document.getElementById("opRekapPendapatan");
+            const elBel = document.getElementById("opRekapBelanja");
+            const elKas = document.getElementById("opRekapKas");
+            const btnDetail = document.getElementById("opRekapDetailBtn");
+
+            if (!s) {
+                if (meta) meta.textContent = "Data sekolah Anda tidak ditemukan di Data Master / database Apps Script.";
+                if (statusRow) statusRow.innerHTML = "";
+                if (kpis) kpis.innerHTML = "";
+                if (elSaldo) elSaldo.innerHTML = "";
+                if (elPend) elPend.innerHTML = "";
+                if (elBel) elBel.innerHTML = "";
+                if (elKas) elKas.innerHTML = "";
+                return;
             }
 
-            if (currentUser && currentUser.role === "Operator Sekolah") {
-                filteredData = filteredData;
-            } else {
-                const search = document.getElementById("searchSchool").value.toLowerCase();
-                const kec = document.getElementById("filterKecamatan").value;
-                const status = document.getElementById("filterStatus").value;
-                const jenjang = document.getElementById("filterJenjang").value;
+            const pLabel = (typeof periodLabel === "function") ? periodLabel() : currentMonth;
+            if (meta) {
+                meta.innerHTML = `<b>${escHtml(s.name)}</b> · ${escHtml(s.kecamatan || "")}`
+                    + (s.npsn ? ` · NPSN ${escHtml(s.npsn)}` : "")
+                    + (s.status ? ` · ${escHtml(s.status)}` : "")
+                    + ` · <span class="text-slate-500">${escHtml(pLabel)} TA ${activeYear}</span>`;
+            }
+            if (btnDetail) btnDetail.onclick = function () { openModal(s.no); };
+
+            const st = s.verifStatus || "Draft";
+            let badgeCls = "bg-slate-100 text-slate-700";
+            if (st === "Diajukan Sekolah") badgeCls = "bg-amber-100 text-amber-800";
+            else if (st === "Diverifikasi Dinas") badgeCls = "bg-blue-100 text-blue-800";
+            else if (st === "Disahkan BUD") badgeCls = "bg-emerald-100 text-emerald-800";
+            const nFix = countDocsNeedFix(s.documents || {});
+            const docs = s.documents || {};
+            const up = (typeof DOC_LABELS !== "undefined" ? DOC_LABELS : []).filter(d => docs[d.key] && docs[d.key].url).length;
+            const docTotal = (typeof DOC_LABELS !== "undefined" ? DOC_LABELS.length : 6);
+            if (statusRow) {
+                statusRow.innerHTML =
+                    `<span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${badgeCls}">Status: ${escHtml(st)}</span>`
+                    + (isReconDone(s.no) ? `<span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700"><i class="fa-solid fa-circle-check mr-1"></i>Selesai Rekonsiliasi</span>` : "")
+                    + (nFix > 0 ? `<span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Perlu perbaikan (${nFix})</span>` : "")
+                    + `<span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700"><i class="fa-solid fa-file-pdf mr-1"></i>Berkas ${up}/${docTotal}</span>`;
+            }
+
+            const rowLine = (label, val, bold) =>
+                `<div class="flex justify-between gap-3 ${bold ? "font-bold border-t border-slate-100 pt-1.5 mt-1" : ""}"><span class="text-slate-600">${label}</span><span class="font-mono">${formatRupiah(val || 0)}</span></div>`;
+
+            // Rinci dari buildDetailRow bila tersedia
+            let d = s;
+            try {
+                if (typeof buildDetailRow === "function") {
+                    d = Object.assign({}, s, buildDetailRow(s, computeRolledData()));
+                }
+            } catch (e) {}
+
+            if (kpis) {
+                kpis.innerHTML = `
+                    <div class="kpi k-gold"><div class="ic"><i class="fa-solid fa-vault"></i></div><p class="lb">Saldo Awal</p><h3 class="kpi-val">${formatRupiah(s.saldoAwal || 0)}</h3><span class="cap">${escHtml(pLabel)}</span></div>
+                    <div class="kpi k-green"><div class="ic"><i class="fa-solid fa-arrow-trend-up"></i></div><p class="lb">Total Penerimaan</p><h3 class="kpi-val">${formatRupiah(s.totalPendapatan || 0)}</h3><span class="cap">Reguler, Kinerja, dll</span></div>
+                    <div class="kpi k-rose"><div class="ic"><i class="fa-solid fa-arrow-trend-down"></i></div><p class="lb">Total Pengeluaran</p><h3 class="kpi-val">${formatRupiah(s.totalBelanja || 0)}</h3><span class="cap">Pegawai, Barjas, Modal</span></div>
+                    <div class="kpi k-navy"><div class="ic"><i class="fa-solid fa-wallet"></i></div><p class="lb">Kas Seharusnya</p><h3 class="kpi-val">${formatRupiah(s.kasSeharusnya || 0)}</h3><span class="cap">Saldo Kas Akhir</span></div>`;
+            }
+
+            const pd = s.pendapatanDetail || {};
+            const bd = s.belanjaDetail || {};
+            if (elSaldo) {
+                elSaldo.innerHTML =
+                    rowLine("SA Bank BOS Reguler", d.saReg != null ? d.saReg : 0) +
+                    rowLine("SA Bank BOS Kinerja", d.saKin != null ? d.saKin : 0) +
+                    rowLine("SA Bukan BOS", d.saBukan != null ? d.saBukan : 0) +
+                    rowLine("SA Tunai", d.saTunai != null ? d.saTunai : 0) +
+                    rowLine("Total Saldo Awal", s.saldoAwal || 0, true);
+            }
+            if (elPend) {
+                elPend.innerHTML =
+                    rowLine("Reguler", pd.reguler) +
+                    rowLine("Kinerja", pd.kinerja) +
+                    rowLine("Jasa Giro Masuk", pd.jagirMasuk) +
+                    rowLine("Setoran Tunai", pd.setoranTunai) +
+                    rowLine("Lebih Transfer Masuk", pd.lebihTransferMasuk) +
+                    rowLine("Total Penerimaan", s.totalPendapatan || 0, true);
+            }
+            if (elBel) {
+                elBel.innerHTML =
+                    rowLine("Belanja Pegawai", bd.pegawai) +
+                    rowLine("Barang & Jasa Reguler", bd.barjasReg) +
+                    rowLine("Barang & Jasa Kinerja", bd.barjasKin) +
+                    rowLine("Peralatan Mesin", (bd.pm || 0) + (bd.pmKin || 0)) +
+                    rowLine("Aset Tetap Lainnya", (bd.atl || 0) + (bd.atlKin || 0)) +
+                    rowLine("Jagir / Lebih Transfer Keluar", (bd.jagirKeluar || 0) + (bd.lebihTransferKeluar || 0)) +
+                    rowLine("Total Pengeluaran", s.totalBelanja || 0, true);
+            }
+            if (elKas) {
+                const selisih = d.selisih != null ? d.selisih : null;
+                const rc = d.saldoRC != null ? d.saldoRC : null;
+                elKas.innerHTML =
+                    rowLine("Kas Seharusnya (SP2B)", s.kasSeharusnya || 0) +
+                    (rc != null ? rowLine("Saldo RC Bank", rc) : "") +
+                    (selisih != null
+                        ? `<div class="flex justify-between gap-3 font-bold border-t border-slate-100 pt-1.5 mt-1"><span class="text-slate-600">Selisih (SP2B − RC)</span><span class="font-mono ${Math.abs(selisih) < 1 ? "text-emerald-700" : "text-rose-700"}">${formatRupiah(selisih)}</span></div>`
+                        : "") +
+                    `<div class="mt-2 text-[11px] text-slate-500">Periode: <b>${escHtml(pLabel)} ${activeYear}</b>. Ubah periode di atas untuk melihat triwulan/semester/tahun.</div>`;
+            }
+        }
+
+        function filterData() {
+            // filteredData sudah diisi di updateActiveMonthData() (untuk operator: hanya sekolahnya)
+            if (!(currentUser && currentUser.role === "Operator Sekolah")) {
+                const search = (document.getElementById("searchSchool") || {}).value || "";
+                const searchL = String(search).toLowerCase();
+                const kec = (document.getElementById("filterKecamatan") || {}).value || "";
+                const status = (document.getElementById("filterStatus") || {}).value || "";
+                const jenjang = (document.getElementById("filterJenjang") || {}).value || "";
+                const rekon = (document.getElementById("filterRekon") || {}).value || "";
 
                 filteredData = filteredData.filter(s => {
-                    const matchSearch = s.name.toLowerCase().includes(search);
-                    const matchKec = kec === "" || s.kecamatan === kec;
-                    const matchStatus = status === "" || (s.status || "NEGERI") === status;
-                    const matchJenjang = jenjang === "" || (s.jenjang || "SD") === jenjang;
-                    const rekon = (document.getElementById("filterRekon") || {}).value || "";
-                    const matchRekon = rekon === "" || (rekon === "selesai") === isReconDone(s.no);
+                    const matchSearch = !searchL || String(s.name || "").toLowerCase().includes(searchL);
+                    const matchKec = !kec || s.kecamatan === kec;
+                    const matchStatus = !status || (s.status || "NEGERI") === status;
+                    const matchJenjang = !jenjang || (s.jenjang || "SD") === jenjang;
+                    const matchRekon = !rekon || (rekon === "selesai") === isReconDone(s.no);
                     return matchSearch && matchKec && matchStatus && matchJenjang && matchRekon;
                 });
             }
@@ -5895,6 +6052,7 @@
             renderTable();
             updateKPIs();
             renderProgressPanel();
+            if (typeof renderOperatorSchoolRekap === "function") renderOperatorSchoolRekap();
             if (currentUser && currentUser.role === "Admin Dinas") {
                 updateCharts();
             }
