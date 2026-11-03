@@ -3032,13 +3032,14 @@
             if (roleEl) roleEl.textContent = role || "—";
 
             const groups = [];
-            groups.push({
-                title: "Utama",
-                items: [
-                    { icon: "fa-house", label: "Beranda", fn: "window.scrollTo({top:0,behavior:'smooth'}); closeSidebarMobile();" },
-                    { icon: "fa-chart-line", label: "Dashboard Rekap", fn: "openSchoolDashboardModal(); closeSidebarMobile();" }
-                ]
-            });
+            const utamaItems = [
+                { icon: "fa-house", label: "Beranda", fn: "window.scrollTo({top:0,behavior:'smooth'}); closeSidebarMobile();" }
+            ];
+            // Dashboard Rekap hanya untuk Admin Dinas (rekap seluruh sekolah)
+            if (role === "Admin Dinas") {
+                utamaItems.push({ icon: "fa-chart-line", label: "Dashboard Rekap", fn: "openSchoolDashboardModal(); closeSidebarMobile();" });
+            }
+            groups.push({ title: "Utama", items: utamaItems });
             if (role === "Operator Sekolah") {
                 groups.push({
                     title: "Input Data",
@@ -6678,6 +6679,10 @@
         }
 
         function openSchoolDashboardModal() {
+            if (!currentUser || currentUser.role !== "Admin Dinas") {
+                alert("Akses ditolak! Dashboard Rekap seluruh sekolah khusus untuk Admin Dinas.");
+                return;
+            }
             let pLabel = periodLabel();
             document.getElementById("dashMonthTitle").textContent = pLabel;
             const dashYearEl = document.getElementById("dashYearTitle");
