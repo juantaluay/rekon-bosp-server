@@ -2274,23 +2274,21 @@
     <!-- JavaScript Data, Auth, Drive Upload & GAS Sync Logic -->
     <script>
         // ============================================================
-        // MODE API:
-        // - Jika dibuka lewat server Node (npm start) → pakai backend lokal (uploads/, data/)
-        // - Jika ingin pakai Google Apps Script → set window.REKON_USE_GAS = true
-        //   dan/atau window.REKON_API_BASE = "https://script.google.com/.../exec"
+        // MODE API (default: Google Apps Script)
+        // - Selalu pakai GAS kecuali window.REKON_USE_GAS = false
+        // - Opsional override URL: window.REKON_API_BASE = "https://script.google.com/.../exec"
+        // - Untuk backend Node lokal: set window.REKON_USE_GAS = false
         // ============================================================
         const USE_NODE_BACKEND = (typeof window.REKON_USE_GAS === "boolean")
             ? !window.REKON_USE_GAS
-            : (window.location.protocol === "http:" || window.location.protocol === "https:")
-                && window.location.hostname !== ""
-                && window.location.hostname !== "null";
+            : false; // default: pakai Google Apps Script
 
         const NODE_API_BASE = (typeof window.REKON_API_BASE === "string" && window.REKON_API_BASE.trim()
             && window.REKON_API_BASE.indexOf("script.google.com") === -1)
             ? window.REKON_API_BASE.trim().replace(/\/$/, "")
             : (window.location.origin || "http://localhost:3000");
 
-        // URL GAS (hanya dipakai jika USE_NODE_BACKEND = false)
+        // URL Web App Google Apps Script (dipakai selama USE_NODE_BACKEND = false)
         const GAS_WEB_APP_URL = (typeof window.REKON_API_BASE === "string" && window.REKON_API_BASE.indexOf("script.google.com") !== -1)
             ? window.REKON_API_BASE.trim()
             : "https://script.google.com/macros/s/AKfycbxdGspNfrgKY95DgBZvWIv2j0unWBsmOWJ6ueg4jSnsPPVtz4OopXfPabk9NrEYlBGm/exec";
@@ -2506,35 +2504,36 @@
                     console.warn("GAS belum dikonfigurasi. Menggunakan data lokal.");
                     return;
                 }
-                const response = await fetch(GAS_WEB_APP_URL + "?action=getData", {
+                // Semua database (sekolah, realisasi, users) diambil dari Google Apps Script
+                const gasUrl = GAS_WEB_APP_URL
+                    + "?action=getData"
+                    + "&year=" + encodeURIComponent(activeYear)
+                    + "&_=" + Date.now();
+                const response = await fetch(gasUrl, {
                     method: "GET",
-                    redirect: "follow"
+                    redirect: "follow",
+                    cache: "no-store"
                 });
                 const result = await response.json();
                 if (result.status === "success") {
-                    if (result.schools && result.schools.length > 0) baseSchools = result.schools;
-                    if (result.monthlyData && Object.keys(result.monthlyData).length > 0) {
+                    // Sumber kebenaran = Apps Script (timpa cache lokal)
+                    if (Array.isArray(result.schools) && result.schools.length > 0) {
+                        baseSchools = result.schools.map(normalizeSchool);
+                    }
+                    if (result.monthlyData && typeof result.monthlyData === "object") {
                         monthlyData = result.monthlyData;
                     }
                     if (Array.isArray(result.users) && result.users.length > 0) {
-                        const localUsers = JSON.parse(localStorage.getItem("bosp_usersDB") || "[]");
-                        const localMap = new Map();
-                        localUsers.forEach(u => { if (u && u.username) localMap.set(String(u.username).toLowerCase(), u); });
-                        const mergedUsers = new Map();
-                        result.users.map(mapSheetUser).filter(u => u.username).forEach(u => {
-                            const loc = localMap.get(u.username.toLowerCase()) || {};
-                            const merged = { ...u };
-                            ["npsn", "schoolNo", "role", "name", "whatsapp"].forEach(k => { if (isEmptyVal(merged[k]) && !isEmptyVal(loc[k])) merged[k] = loc[k]; });
-                            mergedUsers.set(u.username.toLowerCase(), merged);
-                        });
-                        usersDB = Array.from(mergedUsers.values());
+                        usersDB = result.users.map(mapSheetUser).filter(u => u && u.username).map(normalizeUser);
                     }
-                    baseSchools = baseSchools.map(normalizeSchool);
-                    usersDB = usersDB.map(normalizeUser);
                     localStorage.setItem("bosp_baseSchools", JSON.stringify(baseSchools));
                     localStorage.setItem(yearKey("monthlyData"), JSON.stringify(monthlyData));
                     localStorage.setItem("bosp_usersDB", JSON.stringify(usersDB));
                     localStorage.setItem("bosp_activeYear", String(activeYear));
+                    console.log("Data dimuat dari Google Apps Script, tahun:", activeYear,
+                        "| sekolah:", baseSchools.length,
+                        "| users:", usersDB.length,
+                        "| monthly keys:", Object.keys(monthlyData || {}).length);
                 } else {
                     console.warn("Respons GAS tidak sukses:", result.message || result);
                 }
@@ -3175,9 +3174,14 @@
             const yearSel = document.getElementById("loginYearSelect");
             const selectedYear = yearSel ? parseInt(yearSel.value, 10) : activeYear;
 
+            if (!u || !p) {
+                alert("Username dan kata sandi wajib diisi.");
+                return;
+            }
+
             let found = null;
 
-            // --- Login ke server Node (wajib agar upload ke uploads/ berhasil) ---
+            // --- Login ke server Node (opsional, hanya jika mode Node aktif) ---
             if (isNodeBackend()) {
                 try {
                     const resp = await fetch(NODE_API_BASE + "/api/login", {
@@ -3192,12 +3196,10 @@
                         return;
                     }
                     found = data.user;
-                    // Simpan token untuk Authorization header
                     if (data.token) {
                         nodeAuthToken = data.token;
                         sessionStorage.setItem("rekon_node_token", data.token);
                     }
-                    // Sinkronkan ke usersDB lokal (tanpa password hash)
                     const idx = usersDB.findIndex(x => x.username === found.username);
                     if (idx >= 0) usersDB[idx] = Object.assign({}, usersDB[idx], found, { password: p });
                     else usersDB.push(Object.assign({}, found, { password: p }));
@@ -3207,7 +3209,15 @@
                     return;
                 }
             } else {
-                found = usersDB.find(x => x.username === u && x.password === p);
+                // Mode GAS: muat ulang database users dari Apps Script sebelum autentikasi
+                try {
+                    activeYear = selectedYear;
+                    localStorage.setItem("bosp_activeYear", String(activeYear));
+                    await loadFromGoogleSheets();
+                } catch (e) {
+                    console.warn("Gagal sinkron users dari GAS sebelum login:", e);
+                }
+                found = usersDB.find(x => String(x.username).toLowerCase() === u.toLowerCase() && String(x.password) === p);
             }
 
             if (found) {
@@ -3215,25 +3225,29 @@
                     alert("Akun Anda masih berstatus 'Pending' dan menunggu verifikasi persetujuan dari Admin Dinas.");
                     return;
                 }
-                if (activeYear !== selectedYear) {
-                    try { localStorage.setItem(yearKey("monthlyData"), JSON.stringify(monthlyData)); } catch (e) {}
-                }
+
                 activeYear = selectedYear;
                 localStorage.setItem("bosp_activeYear", String(activeYear));
+                currentUser = Object.assign({}, found, { password: p });
 
-                currentUser = found;
-                if (!currentUser.password) currentUser.password = p;
-
-                // Muat data dari SERVER Node dulu (agar laptop admin melihat inputan sekolah)
-                // Baru fallback ke localStorage jika server kosong/gagal
-                monthlyData = JSON.parse(localStorage.getItem(yearKey("monthlyData"))) || {};
-                if (isNodeBackend()) {
+                // Muat ulang seluruh database realisasi/sekolah dari Apps Script untuk tahun terpilih
+                if (!isNodeBackend() && isGasConfigured()) {
                     try {
-                        await loadFromGoogleSheets(); // fungsi ini sudah diarahkan ke /api/data saat mode Node
+                        await loadFromGoogleSheets();
                     } catch (e) {
-                        console.warn("Gagal muat data server setelah login:", e);
+                        console.warn("Gagal memuat data tahun dari GAS:", e);
                     }
+                } else if (isNodeBackend()) {
+                    try {
+                        await loadFromGoogleSheets();
+                    } catch (e) {
+                        console.warn("Gagal memuat data dari Node:", e);
+                    }
+                } else {
+                    monthlyData = JSON.parse(localStorage.getItem(yearKey("monthlyData"))) || {};
                 }
+
+                // Skeleton kosong hanya jika benar-benar belum ada data sama sekali
                 if (Object.keys(monthlyData).length === 0) {
                     baseSchools.forEach(s => {
                         monthlyData[s.no] = {};
@@ -3254,12 +3268,13 @@
                     });
                 }
 
-                // Jangan panggil saveToLocalStorage penuh di sini (bisa menimpa data server dengan data lokal kosong)
+                // Jangan saveAll ke server di sini (hindari menimpa data GAS dengan skeleton lokal)
                 try {
                     localStorage.setItem("bosp_currentUser", JSON.stringify(currentUser));
                     localStorage.setItem("bosp_usersDB", JSON.stringify(usersDB));
                     localStorage.setItem("bosp_activeYear", String(activeYear));
                     localStorage.setItem(yearKey("monthlyData"), JSON.stringify(monthlyData));
+                    localStorage.setItem("bosp_baseSchools", JSON.stringify(baseSchools));
                 } catch (e) {}
 
                 closeAuthModal();
@@ -3269,9 +3284,12 @@
                 if (typeof renderSidebarMenu === "function") renderSidebarMenu();
                 initAppDashboard();
                 startIdleWatch();
-                alert("Selamat datang kembali, " + found.name + "!\nTahun Anggaran aktif: " + activeYear + (isNodeBackend() ? "\n(Data dimuat dari server bersama)" : ""));
+                const srcNote = isNodeBackend()
+                    ? "\n(Data dimuat dari server Node)"
+                    : (isGasConfigured() ? "\n(Data dimuat dari Google Apps Script)" : "\n(Data lokal)");
+                alert("Selamat datang kembali, " + found.name + "!\nTahun Anggaran aktif: " + activeYear + srcNote);
             } else {
-                alert("Username atau kata sandi salah, atau akun belum terdaftar!");
+                alert("Username atau kata sandi salah, atau akun belum terdaftar di database Apps Script!");
             }
         }
 
